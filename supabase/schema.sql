@@ -42,6 +42,21 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- When a member first creates their profile, inherit their role (member/admin)
+-- from the invite allowlist so admin bootstrap is a single step.
+create or replace function public.set_role_from_invite()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  select role into new.role from public.member_invites
+    where lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')) limit 1;
+  if new.role is null then new.role := 'member'; end if;
+  return new;
+end $$;
+
+drop trigger if exists profiles_set_role on public.profiles;
+create trigger profiles_set_role before insert on public.profiles
+  for each row execute function public.set_role_from_invite();
+
 -- ───────────────────────── Curriculum ─────────────────────────
 create table if not exists public.studies (
   id          uuid primary key default gen_random_uuid(),
@@ -234,9 +249,10 @@ do $$ begin alter publication supabase_realtime add table public.notes; exceptio
 do $$ begin alter publication supabase_realtime add table public.lessons; exception when duplicate_object then null; end $$;
 
 -- ───────────────────────── Bootstrap the first admin ─────────────────────────
--- 1) Add yourself to the allowlist (use the email you'll sign in with):
+-- Add yourself to the allowlist as admin (use the email you'll sign in with),
+-- then just sign in once in the app - your profile inherits the admin role:
 --      insert into public.member_invites (email, role) values ('you@example.com', 'admin')
 --      on conflict (email) do update set role = 'admin';
--- 2) Sign in once in the app (creates your profile), then promote yourself:
+-- (If you already signed in before adding yourself, run once to fix your role:)
 --      update public.profiles set role = 'admin'
 --      where id = (select id from auth.users where email = 'you@example.com');

@@ -35,6 +35,19 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+create or replace function public.set_role_from_invite()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  select role into new.role from public.member_invites
+    where lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')) limit 1;
+  if new.role is null then new.role := 'member'; end if;
+  return new;
+end $$;
+
+drop trigger if exists profiles_set_role on public.profiles;
+create trigger profiles_set_role before insert on public.profiles
+  for each row execute function public.set_role_from_invite();
+
 create table if not exists public.studies (
   id          uuid primary key default gen_random_uuid(),
   title       text not null,
