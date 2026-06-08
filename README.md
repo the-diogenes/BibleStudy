@@ -115,3 +115,6 @@ reflect their own authors' views; choose which to display.
 See [`docs/curriculum-research.md`](docs/curriculum-research.md) for a neutral
 shortlist of study methods and reputable sources to choose from (you decide what
 to adopt).
+
+Future feature ideas are parked in
+[`docs/future-ideas.md`](docs/future-ideas.md).

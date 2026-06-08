@@ -8,9 +8,9 @@ export default function SupportCard() {
   return (
     <section className="card flex items-center justify-between gap-3 p-4">
       <div>
-        <p className="font-serif text-base font-semibold">Support this study</p>
+        <p className="font-serif text-base font-semibold">Support this project</p>
         <p className="mt-0.5 text-sm text-stone-500">
-          Help cover hosting and keep it free for everyone.
+          Leave an optional tip to help cover hosting and development time.
         </p>
       </div>
       <a
@@ -20,7 +20,7 @@ export default function SupportCard() {
         className="btn-primary shrink-0"
       >
         <HeartIcon className="h-4 w-4" />
-        Donate
+        Tip
       </a>
     </section>
   );
