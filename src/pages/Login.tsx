@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { config } from "../lib/config";
+import { normalizeUsername } from "../lib/username";
 
 type Mode = "login" | "signup";
 
@@ -16,16 +17,26 @@ export default function Login() {
 
   if (status === "member") return <Navigate to="/" replace />;
 
+  const handle = normalizeUsername(username);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError(null);
     setInfo(null);
+    if (!handle) {
+      setError("Pick a username using letters or numbers (no spaces or symbols).");
+      return;
+    }
+    setBusy(true);
     const fn = mode === "login" ? signInWithPassword : signUpWithPassword;
     const res = await fn(username, password);
     setBusy(false);
     if (res.error) {
-      setError(res.error);
+      setError(
+        /validate email/i.test(res.error)
+          ? "That username can't be used. Stick to letters, numbers, dots, dashes, or underscores."
+          : res.error
+      );
     } else if (res.needsConfirmation) {
       setInfo(
         "Account created, but email confirmation is enabled in Supabase. Ask the admin to disable 'Confirm email' so username sign-in works."
@@ -97,6 +108,11 @@ export default function Login() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
+            {handle && handle !== username.trim().toLowerCase() && (
+              <span className="mt-1 block text-xs font-normal text-stone-400">
+                You'll sign in as <span className="font-medium text-stone-500">{handle}</span>
+              </span>
+            )}
           </label>
 
           <label className="block text-sm font-medium">
