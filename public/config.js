@@ -9,4 +9,6 @@ window.__BIBLE_CONFIG__ = {
   // To hide your address from page source, replace with your FormSubmit alias
   // token, e.g. "https://formsubmit.co/ajax/<your-token>" is used automatically.
   notifyEmail: "john.raymond.jr@gmail.com",
+  // Optional: a Ko-fi page powers the "Support" links. Leave "" to hide them.
+  kofiUrl: "https://ko-fi.com/johnraymondjrgmailcom",
 };

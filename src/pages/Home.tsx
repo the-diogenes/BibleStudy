@@ -10,6 +10,7 @@ import Spinner from "../components/Spinner";
 import ShareButton from "../components/ShareButton";
 import VerseOfDayCard from "../components/VerseOfDayCard";
 import MeetingCard from "../components/MeetingCard";
+import SupportCard from "../components/SupportCard";
 import { BookmarkIcon, ChevronRight } from "../components/icons";
 
 function bookmarkPath(b: Bookmark): string {
@@ -207,6 +208,8 @@ export default function Home() {
           )}
         </section>
       )}
+
+      <SupportCard />
     </div>
   );
 }

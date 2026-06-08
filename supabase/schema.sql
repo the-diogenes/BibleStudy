@@ -206,7 +206,7 @@ create policy profiles_select on public.profiles
   for select using (public.is_member());
 drop policy if exists profiles_insert on public.profiles;
 create policy profiles_insert on public.profiles
-  for insert with check (id = auth.uid() and public.is_invited());
+  for insert with check (id = auth.uid());
 drop policy if exists profiles_update on public.profiles;
 create policy profiles_update on public.profiles
   for update using (id = auth.uid() or public.is_admin())
@@ -304,6 +304,9 @@ from auth.users u
 where u.id = p.id and (p.username is null or p.username = '');
 
 -- Re-create ensure_profile so it also records the username on first login.
+-- OPEN REGISTRATION: anyone who signs up gets a member profile. If their email
+-- happens to be on the member_invites allowlist, that role is honored (so you can
+-- pre-assign admins), otherwise they default to 'member'.
 create or replace function public.ensure_profile(p_display_name text default null)
 returns setof public.profiles
 language plpgsql security definer set search_path = public as $$
@@ -319,10 +322,6 @@ begin
   if exists (select 1 from public.profiles where id = uid) then
     return query select * from public.profiles where id = uid;
     return;
-  end if;
-
-  if not public.is_invited() then
-    raise exception 'not invited' using errcode = '42501';
   end if;
 
   select role into inv_role from public.member_invites

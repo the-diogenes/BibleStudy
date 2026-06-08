@@ -113,6 +113,12 @@ export const BookmarkFilledIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const HeartIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M19 14c1.5-1.5 2-3.4 2-5a4.5 4.5 0 0 0-8-2.8A4.5 4.5 0 0 0 5 9c0 1.6.5 3.5 2 5l5 5z" />
+  </svg>
+);
+
 export const TrashIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="M4 7h16" />

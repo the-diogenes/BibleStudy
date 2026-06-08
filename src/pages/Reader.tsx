@@ -238,9 +238,9 @@ export default function Reader() {
       <div className="mb-3 flex items-center justify-between gap-2">
         <button
           className="flex items-center gap-1 text-sm text-stone-500"
-          onClick={() => navigate("/bible")}
+          onClick={() => navigate(`/bible?book=${book}`)}
         >
-          <ArrowLeft className="h-4 w-4" /> Books
+          <ArrowLeft className="h-4 w-4" /> {bookName}
         </button>
         <div className="flex items-center gap-2">
           {profile && (

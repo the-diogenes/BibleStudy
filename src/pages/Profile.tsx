@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useSettings, type ThemePref } from "../context/SettingsContext";
 import { emailToUsername } from "../lib/username";
 import { READ_COLORS } from "../lib/readColor";
+import { config } from "../lib/config";
 import TranslationPicker from "../components/TranslationPicker";
 
 export default function Profile() {
@@ -169,6 +170,16 @@ export default function Profile() {
         <Link to="/about" className="btn-ghost">
           About this group
         </Link>
+        {config.kofiUrl && (
+          <a
+            href={config.kofiUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-ghost"
+          >
+            Support
+          </a>
+        )}
         {isAdmin && (
           <Link to="/admin" className="btn-ghost">
             Admin tools

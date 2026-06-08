@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getBooks, type BookSummary } from "../lib/bibleApi";
 import { useSettings } from "../context/SettingsContext";
 import { useAuth } from "../context/AuthContext";
@@ -14,13 +14,20 @@ export default function BibleBooks() {
   const { translation, readColor } = useSettings();
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<BookSummary | null>(null);
   const [reads, setReads] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState("");
   const [jumpError, setJumpError] = useState(false);
+
+  // The chosen book lives in the URL (?book=LUK) so the reader's back button can
+  // return straight to a book's chapter list, and chapter list back to all books.
+  const bookId = searchParams.get("book");
+  const selected = useMemo(() => books.find((b) => b.id === bookId) || null, [books, bookId]);
+  const selectBook = (b: BookSummary) => setSearchParams({ book: b.id });
+  const clearBook = () => setSearchParams({});
 
   useEffect(() => {
     let active = true;
@@ -76,7 +83,7 @@ export default function BibleBooks() {
   if (selected) {
     return (
       <div>
-        <button className="mb-3 text-sm text-stone-500" onClick={() => setSelected(null)}>
+        <button className="mb-3 text-sm text-stone-500" onClick={clearBook}>
           &larr; All books
         </button>
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -148,8 +155,8 @@ export default function BibleBooks() {
           Greek &amp; Hebrew alphabet guide
         </Link>
       </div>
-      <BookGroup title="Old Testament" books={ot} onSelect={setSelected} />
-      <BookGroup title="New Testament" books={nt} onSelect={setSelected} />
+      <BookGroup title="Old Testament" books={ot} onSelect={selectBook} />
+      <BookGroup title="New Testament" books={nt} onSelect={selectBook} />
     </div>
   );
 }
