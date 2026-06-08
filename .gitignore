@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Runtime config (public/config.js) IS committed for this project: the Supabase
+# publishable key is public-safe and Row-Level Security protects the data. This
+# lets GitHub Pages deploy with no extra secret setup.

@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: theme("colors.parchment");
+  color: theme("colors.ink");
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Respect iOS safe areas for the fixed bottom nav. */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pb-nav {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+/* Scripture reading typography */
+.prose-scripture p {
+  margin: 0 0 0.75rem;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition active:scale-[0.98] disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-parchment hover:bg-stone-800;
+  }
+  .btn-ghost {
+    @apply btn bg-stone-100 text-ink hover:bg-stone-200;
+  }
+  .card {
+    @apply rounded-xl border border-stone-200 bg-white shadow-sm;
+  }
+  .input {
+    @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-base outline-none focus:border-ink focus:ring-1 focus:ring-ink;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}

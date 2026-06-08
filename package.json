@@ -1,0 +1,32 @@
+{
+  "name": "bible-study-site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Mobile-first Bible study app for a private group: reader (multiple free translations + original Greek/Hebrew interlinear), discussion threads, and notes. Static site on GitHub Pages + Supabase.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "build:interlinear": "node scripts/build-interlinear.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.107.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.42",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8",
+    "vite-plugin-pwa": "^0.20.5"
+  }
+}

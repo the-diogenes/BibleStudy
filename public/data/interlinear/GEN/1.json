@@ -1,0 +1,37 @@
+{
+  "verses": {
+    "1": [
+      { "w": "בְּרֵאשִׁית", "translit": "bereshit", "strongs": "H7225", "morph": "HR/Ncfsa", "gloss": "In the beginning" },
+      { "w": "בָּרָא", "translit": "bara", "strongs": "H1254", "morph": "HVqp3ms", "gloss": "created" },
+      { "w": "אֱלֹהִים", "translit": "elohim", "strongs": "H430", "morph": "HNcmpa", "gloss": "God" },
+      { "w": "אֵת", "translit": "et", "strongs": "H853", "morph": "HTo", "gloss": "-" },
+      { "w": "הַשָּׁמַיִם", "translit": "hashamayim", "strongs": "H8064", "morph": "HTd/Ncmpa", "gloss": "the heavens" },
+      { "w": "וְאֵת", "translit": "ve'et", "strongs": "H853", "morph": "HC/To", "gloss": "and -" },
+      { "w": "הָאָרֶץ", "translit": "ha'arets", "strongs": "H776", "morph": "HTd/Ncbsa", "gloss": "the earth" }
+    ],
+    "2": [
+      { "w": "וְהָאָרֶץ", "translit": "veha'arets", "strongs": "H776", "morph": "HC/Td/Ncbsa", "gloss": "And the earth" },
+      { "w": "הָיְתָה", "translit": "hayetah", "strongs": "H1961", "morph": "HVqp3fs", "gloss": "was" },
+      { "w": "תֹהוּ", "translit": "tohu", "strongs": "H8414", "morph": "HNcmsa", "gloss": "formless" },
+      { "w": "וָבֹהוּ", "translit": "vavohu", "strongs": "H922", "morph": "HC/Ncmsa", "gloss": "and void" },
+      { "w": "וְחֹשֶׁךְ", "translit": "vechoshekh", "strongs": "H2822", "morph": "HC/Ncmsa", "gloss": "and darkness" },
+      { "w": "עַל", "translit": "al", "strongs": "H5921", "morph": "HR", "gloss": "over" },
+      { "w": "פְּנֵי", "translit": "pene", "strongs": "H6440", "morph": "HNcbpc", "gloss": "[the] face of" },
+      { "w": "תְהוֹם", "translit": "tehom", "strongs": "H8415", "morph": "HNcbsa", "gloss": "[the] deep" },
+      { "w": "וְרוּחַ", "translit": "veruach", "strongs": "H7307", "morph": "HC/Ncbsc", "gloss": "and [the] Spirit" },
+      { "w": "אֱלֹהִים", "translit": "elohim", "strongs": "H430", "morph": "HNcmpa", "gloss": "of God" },
+      { "w": "מְרַחֶפֶת", "translit": "merachefet", "strongs": "H7363", "morph": "HVprfsa", "gloss": "was hovering" },
+      { "w": "עַל", "translit": "al", "strongs": "H5921", "morph": "HR", "gloss": "over" },
+      { "w": "פְּנֵי", "translit": "pene", "strongs": "H6440", "morph": "HNcbpc", "gloss": "[the] face of" },
+      { "w": "הַמָּיִם", "translit": "hamayim", "strongs": "H4325", "morph": "HTd/Ncmpa", "gloss": "the waters" }
+    ],
+    "3": [
+      { "w": "וַיֹּאמֶר", "translit": "vayomer", "strongs": "H559", "morph": "HC/Vqw3ms", "gloss": "And said" },
+      { "w": "אֱלֹהִים", "translit": "elohim", "strongs": "H430", "morph": "HNcmpa", "gloss": "God" },
+      { "w": "יְהִי", "translit": "yehi", "strongs": "H1961", "morph": "HVqj3ms", "gloss": "Let there be" },
+      { "w": "אוֹר", "translit": "or", "strongs": "H216", "morph": "HNcbsa", "gloss": "light" },
+      { "w": "וַיְהִי", "translit": "vayehi", "strongs": "H1961", "morph": "HC/Vqw3ms", "gloss": "and there was" },
+      { "w": "אוֹר", "translit": "or", "strongs": "H216", "morph": "HNcbsa", "gloss": "light" }
+    ]
+  }
+}

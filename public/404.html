@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bible Study</title>
+    <!--
+      Single Page App fallback for GitHub Pages.
+      Stores the requested URL and redirects to index.html, which restores it.
+      Based on the rafgraph/spa-github-pages technique.
+    -->
+    <script>
+      sessionStorage.redirect = location.href;
+      location.replace(location.pathname.split("/").slice(0, 2).join("/") + "/");
+    </script>
+  </head>
+  <body></body>
+</html>

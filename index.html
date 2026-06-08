@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+    <meta name="theme-color" content="#1c1917" />
+    <meta name="description" content="Group Bible study: reader, original languages, discussion, and notes." />
+    <title>Bible Study</title>
+    <!-- Runtime config (Supabase keys). Copy public/config.example.js to public/config.js. Optional: app reads VITE_* env if absent. -->
+    <script src="config.js"></script>
+    <!-- GitHub Pages SPA redirect restore (see public/404.html) -->
+    <script>
+      (function () {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, "", redirect);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

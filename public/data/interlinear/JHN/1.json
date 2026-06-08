@@ -1,0 +1,75 @@
+{
+  "verses": {
+    "1": [
+      { "w": "Ἐν", "translit": "En", "strongs": "G1722", "morph": "P", "gloss": "In" },
+      { "w": "ἀρχῇ", "translit": "archē", "strongs": "G746", "morph": "N-DSF", "gloss": "[the] beginning" },
+      { "w": "ἦν", "translit": "ēn", "strongs": "G1510", "morph": "V-IIA-3S", "gloss": "was" },
+      { "w": "ὁ", "translit": "ho", "strongs": "G3588", "morph": "T-NSM", "gloss": "the" },
+      { "w": "λόγος", "translit": "logos", "strongs": "G3056", "morph": "N-NSM", "gloss": "Word" },
+      { "w": "καὶ", "translit": "kai", "strongs": "G2532", "morph": "C", "gloss": "and" },
+      { "w": "ὁ", "translit": "ho", "strongs": "G3588", "morph": "T-NSM", "gloss": "the" },
+      { "w": "λόγος", "translit": "logos", "strongs": "G3056", "morph": "N-NSM", "gloss": "Word" },
+      { "w": "ἦν", "translit": "ēn", "strongs": "G1510", "morph": "V-IIA-3S", "gloss": "was" },
+      { "w": "πρὸς", "translit": "pros", "strongs": "G4314", "morph": "P", "gloss": "with" },
+      { "w": "τὸν", "translit": "ton", "strongs": "G3588", "morph": "T-ASM", "gloss": "-" },
+      { "w": "θεόν", "translit": "theon", "strongs": "G2316", "morph": "N-ASM", "gloss": "God" },
+      { "w": "καὶ", "translit": "kai", "strongs": "G2532", "morph": "C", "gloss": "and" },
+      { "w": "θεὸς", "translit": "theos", "strongs": "G2316", "morph": "N-NSM", "gloss": "God" },
+      { "w": "ἦν", "translit": "ēn", "strongs": "G1510", "morph": "V-IIA-3S", "gloss": "was" },
+      { "w": "ὁ", "translit": "ho", "strongs": "G3588", "morph": "T-NSM", "gloss": "the" },
+      { "w": "λόγος", "translit": "logos", "strongs": "G3056", "morph": "N-NSM", "gloss": "Word" }
+    ],
+    "2": [
+      { "w": "οὗτος", "translit": "houtos", "strongs": "G3778", "morph": "D-NSM", "gloss": "He" },
+      { "w": "ἦν", "translit": "ēn", "strongs": "G1510", "morph": "V-IIA-3S", "gloss": "was" },
+      { "w": "ἐν", "translit": "en", "strongs": "G1722", "morph": "P", "gloss": "in" },
+      { "w": "ἀρχῇ", "translit": "archē", "strongs": "G746", "morph": "N-DSF", "gloss": "[the] beginning" },
+      { "w": "πρὸς", "translit": "pros", "strongs": "G4314", "morph": "P", "gloss": "with" },
+      { "w": "τὸν", "translit": "ton", "strongs": "G3588", "morph": "T-ASM", "gloss": "-" },
+      { "w": "θεόν", "translit": "theon", "strongs": "G2316", "morph": "N-ASM", "gloss": "God" }
+    ],
+    "3": [
+      { "w": "πάντα", "translit": "panta", "strongs": "G3956", "morph": "A-NPN", "gloss": "All things" },
+      { "w": "διʼ", "translit": "di'", "strongs": "G1223", "morph": "P", "gloss": "through" },
+      { "w": "αὐτοῦ", "translit": "autou", "strongs": "G846", "morph": "P-GSM", "gloss": "Him" },
+      { "w": "ἐγένετο", "translit": "egeneto", "strongs": "G1096", "morph": "V-AIM-3S", "gloss": "came into being" },
+      { "w": "καὶ", "translit": "kai", "strongs": "G2532", "morph": "C", "gloss": "and" },
+      { "w": "χωρὶς", "translit": "chōris", "strongs": "G5565", "morph": "P", "gloss": "without" },
+      { "w": "αὐτοῦ", "translit": "autou", "strongs": "G846", "morph": "P-GSM", "gloss": "Him" },
+      { "w": "ἐγένετο", "translit": "egeneto", "strongs": "G1096", "morph": "V-AIM-3S", "gloss": "came into being" },
+      { "w": "οὐδὲ", "translit": "oude", "strongs": "G3761", "morph": "C", "gloss": "not even" },
+      { "w": "ἕν", "translit": "hen", "strongs": "G1520", "morph": "A-NSN", "gloss": "one [thing]" },
+      { "w": "ὃ", "translit": "ho", "strongs": "G3739", "morph": "R-NSN", "gloss": "that" },
+      { "w": "γέγονεν", "translit": "gegonen", "strongs": "G1096", "morph": "V-RIA-3S", "gloss": "has come into being" }
+    ],
+    "4": [
+      { "w": "ἐν", "translit": "en", "strongs": "G1722", "morph": "P", "gloss": "In" },
+      { "w": "αὐτῷ", "translit": "autō", "strongs": "G846", "morph": "P-DSM", "gloss": "Him" },
+      { "w": "ζωὴ", "translit": "zōē", "strongs": "G2222", "morph": "N-NSF", "gloss": "life" },
+      { "w": "ἦν", "translit": "ēn", "strongs": "G1510", "morph": "V-IIA-3S", "gloss": "was" },
+      { "w": "καὶ", "translit": "kai", "strongs": "G2532", "morph": "C", "gloss": "and" },
+      { "w": "ἡ", "translit": "hē", "strongs": "G3588", "morph": "T-NSF", "gloss": "the" },
+      { "w": "ζωὴ", "translit": "zōē", "strongs": "G2222", "morph": "N-NSF", "gloss": "life" },
+      { "w": "ἦν", "translit": "ēn", "strongs": "G1510", "morph": "V-IIA-3S", "gloss": "was" },
+      { "w": "τὸ", "translit": "to", "strongs": "G3588", "morph": "T-NSN", "gloss": "the" },
+      { "w": "φῶς", "translit": "phōs", "strongs": "G5457", "morph": "N-NSN", "gloss": "light" },
+      { "w": "τῶν", "translit": "tōn", "strongs": "G3588", "morph": "T-GPM", "gloss": "of" },
+      { "w": "ἀνθρώπων", "translit": "anthrōpōn", "strongs": "G444", "morph": "N-GPM", "gloss": "men" }
+    ],
+    "5": [
+      { "w": "καὶ", "translit": "kai", "strongs": "G2532", "morph": "C", "gloss": "And" },
+      { "w": "τὸ", "translit": "to", "strongs": "G3588", "morph": "T-NSN", "gloss": "the" },
+      { "w": "φῶς", "translit": "phōs", "strongs": "G5457", "morph": "N-NSN", "gloss": "light" },
+      { "w": "ἐν", "translit": "en", "strongs": "G1722", "morph": "P", "gloss": "in" },
+      { "w": "τῇ", "translit": "tē", "strongs": "G3588", "morph": "T-DSF", "gloss": "the" },
+      { "w": "σκοτίᾳ", "translit": "skotia", "strongs": "G4653", "morph": "N-DSF", "gloss": "darkness" },
+      { "w": "φαίνει", "translit": "phainei", "strongs": "G5316", "morph": "V-PIA-3S", "gloss": "shines" },
+      { "w": "καὶ", "translit": "kai", "strongs": "G2532", "morph": "C", "gloss": "and" },
+      { "w": "ἡ", "translit": "hē", "strongs": "G3588", "morph": "T-NSF", "gloss": "the" },
+      { "w": "σκοτία", "translit": "skotia", "strongs": "G4653", "morph": "N-NSF", "gloss": "darkness" },
+      { "w": "αὐτὸ", "translit": "auto", "strongs": "G846", "morph": "P-ASN", "gloss": "it" },
+      { "w": "οὐ", "translit": "ou", "strongs": "G3756", "morph": "D", "gloss": "not" },
+      { "w": "κατέλαβεν", "translit": "katelaben", "strongs": "G2638", "morph": "V-AIA-3S", "gloss": "overcame" }
+    ]
+  }
+}
