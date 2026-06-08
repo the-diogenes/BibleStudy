@@ -59,13 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // No profile yet: try to create one. RLS only allows this for invited users.
+      // No profile yet: create one via the onboarding function. It verifies the
+      // invite server-side and returns the new profile (or errors if not invited).
       const metaName = (s.user.user_metadata?.username as string | undefined) || "";
       const fallbackName = metaName || (s.user.email || "Member").split("@")[0];
       const { data: created, error } = await supabase
-        .from("profiles")
-        .insert({ id: s.user.id, display_name: fallbackName })
-        .select("*")
+        .rpc("ensure_profile", { p_display_name: fallbackName })
         .single();
 
       if (error || !created) {

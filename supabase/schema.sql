@@ -57,6 +57,44 @@ drop trigger if exists profiles_set_role on public.profiles;
 create trigger profiles_set_role before insert on public.profiles
   for each row execute function public.set_role_from_invite();
 
+-- Onboarding: the signed-in user calls this once to create their membership row.
+-- SECURITY DEFINER so it can create the profile after verifying the invite,
+-- without depending on INSERT row-level-security timing. Returns the profile.
+create or replace function public.ensure_profile(p_display_name text default null)
+returns setof public.profiles
+language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  inv_role text;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  if exists (select 1 from public.profiles where id = uid) then
+    return query select * from public.profiles where id = uid;
+    return;
+  end if;
+
+  if not public.is_invited() then
+    raise exception 'not invited' using errcode = '42501';
+  end if;
+
+  select role into inv_role from public.member_invites
+    where lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')) limit 1;
+
+  return query
+  insert into public.profiles (id, display_name, role)
+  values (
+    uid,
+    coalesce(nullif(p_display_name, ''), split_part(coalesce(auth.jwt() ->> 'email', ''), '@', 1)),
+    coalesce(inv_role, 'member')
+  )
+  returning *;
+end $$;
+
+grant execute on function public.ensure_profile(text) to authenticated;
+
 -- ───────────────────────── Curriculum ─────────────────────────
 create table if not exists public.studies (
   id          uuid primary key default gen_random_uuid(),
