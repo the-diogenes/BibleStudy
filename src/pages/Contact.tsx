@@ -25,6 +25,7 @@ export default function Contact() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   async function refresh() {
     if (!profile) return;
@@ -42,6 +43,7 @@ export default function Contact() {
     e.preventDefault();
     if (!profile || !subject.trim() || !body.trim()) return;
     setSending(true);
+    setErr(null);
     try {
       await createThread(profile.id, subject.trim(), body.trim());
       void notifyAdmin({
@@ -54,6 +56,8 @@ export default function Contact() {
       setSent(true);
       setTimeout(() => setSent(false), 3000);
       await refresh();
+    } catch (e) {
+      setErr((e as Error).message || "Could not send. Please try again.");
     } finally {
       setSending(false);
     }
@@ -89,6 +93,7 @@ export default function Contact() {
             {sending ? "Sending…" : "Send"}
           </button>
           {sent && <span className="text-sm text-emerald-600">Sent! The admin was notified.</span>}
+          {err && <span className="text-sm text-red-600">{err}</span>}
         </div>
       </form>
 
@@ -134,6 +139,7 @@ function Conversation({ thread, onBack }: { thread: FeedbackThread; onBack: () =
   const [messages, setMessages] = useState<FeedbackMessage[]>([]);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -166,6 +172,7 @@ function Conversation({ thread, onBack }: { thread: FeedbackThread; onBack: () =
     e.preventDefault();
     if (!profile || !body.trim()) return;
     setBusy(true);
+    setErr(null);
     const text = body.trim();
     setBody("");
     try {
@@ -176,6 +183,9 @@ function Conversation({ thread, onBack }: { thread: FeedbackThread; onBack: () =
         fromName: profile.display_name || profile.username || "Member",
       });
       await load();
+    } catch (e) {
+      setBody(text);
+      setErr((e as Error).message || "Could not send.");
     } finally {
       setBusy(false);
     }
@@ -212,6 +222,7 @@ function Conversation({ thread, onBack }: { thread: FeedbackThread; onBack: () =
         <div ref={bottomRef} />
       </div>
 
+      {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
       <form onSubmit={send} className="mt-2 flex gap-2">
         <input
           className="input"
