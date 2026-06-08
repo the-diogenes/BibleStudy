@@ -3,7 +3,7 @@ import { getTranslations, type Translation } from "../lib/bibleApi";
 import { useSettings } from "../context/SettingsContext";
 
 // A curated short list surfaced first; the rest remain selectable.
-const PREFERRED = ["BSB", "WEB", "WEBBE", "ENGWEBP", "KJV", "ENGKJV", "NET"];
+const PREFERRED = ["eng_kjv", "BSB", "ENGWEBP", "eng_asv", "eng_net", "eng_gnv", "eng_ylt", "eng_kja"];
 
 export default function TranslationPicker({ className = "" }: { className?: string }) {
   const { translation, setTranslation } = useSettings();

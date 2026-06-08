@@ -11,6 +11,7 @@ import { getChapterInterlinear, type ChapterInterlinear, type InterlinearWord } 
 import { useSettings } from "../context/SettingsContext";
 import TranslationPicker from "../components/TranslationPicker";
 import WordPopover from "../components/WordPopover";
+import ShareButton from "../components/ShareButton";
 import Spinner from "../components/Spinner";
 import { ArrowLeft } from "../components/icons";
 
@@ -92,14 +93,21 @@ export default function Reader() {
         <h1 className="font-serif text-2xl font-semibold">
           {bookName} {chapterNum}
         </h1>
-        <label className="flex items-center gap-2 text-xs text-stone-500">
-          <input
-            type="checkbox"
-            checked={interlinear}
-            onChange={(e) => setInterlinear(e.target.checked)}
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-stone-500">
+            <input
+              type="checkbox"
+              checked={interlinear}
+              onChange={(e) => setInterlinear(e.target.checked)}
+            />
+            Interlinear
+          </label>
+          <ShareButton
+            compact
+            routePath={`read/${book}/${chapterNum}`}
+            title={`${bookName} ${chapterNum}`}
           />
-          Interlinear
-        </label>
+        </div>
       </div>
 
       {loading && <Spinner label="Loading passage..." />}

@@ -6,6 +6,7 @@ import { refLabel, type PassageRef } from "../lib/refs";
 import Discussion from "../components/Discussion";
 import NotesPanel from "../components/NotesPanel";
 import CommentaryPanel from "../components/CommentaryPanel";
+import ShareButton from "../components/ShareButton";
 import { ArrowLeft } from "../components/icons";
 
 type Tab = "discussion" | "notes" | "commentary";
@@ -55,7 +56,14 @@ export default function Passage() {
         <ArrowLeft className="h-4 w-4" /> Read chapter
       </Link>
 
-      <h1 className="font-serif text-2xl font-semibold">{label}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="font-serif text-2xl font-semibold">{label}</h1>
+        <ShareButton
+          routePath={verseNum ? `passage/${book}/${chapterNum}/${verseNum}` : `read/${book}/${chapterNum}`}
+          title={label}
+          text={verseNum && text ? text : undefined}
+        />
+      </div>
 
       {verseNum ? (
         text ? (

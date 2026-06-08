@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings, type ThemePref } from "../context/SettingsContext";
 import { emailToUsername } from "../lib/username";
+import TranslationPicker from "../components/TranslationPicker";
 
 export default function Profile() {
   const { profile, session, status, isAdmin, signOut, updateDisplayName, changePassword } = useAuth();
-  const { translation } = useSettings();
+  const { theme, setTheme } = useSettings();
   const [name, setName] = useState(profile?.display_name || "");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -94,12 +95,29 @@ export default function Profile() {
         </div>
       </form>
 
-      <div className="card p-4 text-sm">
-        <p className="font-medium">Reading preferences</p>
-        <p className="mt-1 text-stone-500">
-          Default translation: <span className="font-mono">{translation}</span> (change it from the
-          Bible tab).
-        </p>
+      <div className="card space-y-4 p-4 text-sm">
+        <div>
+          <p className="font-medium">Appearance</p>
+          <div className="mt-2 flex gap-1 rounded-lg bg-stone-100 p-1">
+            {(["light", "dark", "system"] as ThemePref[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTheme(t)}
+                className={`flex-1 rounded-md py-1.5 font-medium capitalize transition ${
+                  theme === t ? "bg-white text-ink shadow-sm" : "text-stone-500"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="font-medium">Default translation</p>
+          <p className="mt-1 text-stone-500">Used everywhere you read. Saved on this device.</p>
+          <TranslationPicker className="mt-2 max-w-full" />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">

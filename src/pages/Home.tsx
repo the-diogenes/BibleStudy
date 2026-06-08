@@ -7,6 +7,7 @@ import { listLessons, listStudies, myProgress, setProgress } from "../lib/db";
 import { refLabel } from "../lib/refs";
 import type { Lesson, Study } from "../types";
 import Spinner from "../components/Spinner";
+import ShareButton from "../components/ShareButton";
 import { ChevronRight } from "../components/icons";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -70,19 +71,19 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl bg-ink p-5 text-parchment">
-        <p className="text-xs uppercase tracking-wide text-stone-400">Welcome</p>
+      <section className="rounded-2xl bg-[#1c1917] p-5 text-[#f5f2ec]">
+        <p className="text-xs uppercase tracking-wide text-[#a8a29e]">Welcome</p>
         <h1 className="mt-1 font-serif text-2xl font-semibold">
           {current ? current.title : "Let's study the Word"}
         </h1>
         {current?.description && (
-          <p className="mt-2 text-sm text-stone-300">{current.description}</p>
+          <p className="mt-2 text-sm text-[#d6d0c8]">{current.description}</p>
         )}
         <div className="mt-4 flex gap-2">
-          <Link to="/bible" className="btn bg-parchment text-ink hover:bg-white">
+          <Link to="/bible" className="btn bg-[#f5f2ec] text-[#1c1917] hover:opacity-90">
             Open the Bible
           </Link>
-          <Link to="/about" className="btn border border-stone-600 text-parchment">
+          <Link to="/about" className="btn border border-[#57534e] text-[#f5f2ec] hover:bg-[#2a2520]">
             About
           </Link>
         </div>
@@ -146,6 +147,14 @@ export default function Home() {
                   <span className={`chip ${STATUS_STYLE[l.status] || STATUS_STYLE.upcoming}`}>
                     {l.status}
                   </span>
+                  <ShareButton
+                    compact
+                    routePath={lessonHref(l).replace(/^\//, "")}
+                    title={`${l.title} — ${refLabel(
+                      { book: l.book, chapter: l.chapter, verseStart: l.verse_start, verseEnd: l.verse_end },
+                      books
+                    )}`}
+                  />
                   <ChevronRight className="h-5 w-5 shrink-0 text-stone-300" />
                 </li>
               ))}

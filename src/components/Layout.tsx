@@ -1,7 +1,8 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { config, isSupabaseConfigured } from "../lib/config";
 import { useAuth } from "../context/AuthContext";
-import { BookIcon, ChatIcon, HomeIcon, NoteIcon, UserIcon } from "./icons";
+import { useSettings } from "../context/SettingsContext";
+import { BookIcon, ChatIcon, HomeIcon, MoonIcon, NoteIcon, SunIcon, UserIcon } from "./icons";
 
 const tabs = [
   { to: "/", label: "Home", Icon: HomeIcon, end: true },
@@ -13,6 +14,7 @@ const tabs = [
 
 export default function Layout() {
   const { isAdmin } = useAuth();
+  const { resolvedDark, setTheme } = useSettings();
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col">
@@ -21,11 +23,21 @@ export default function Layout() {
           <Link to="/" className="font-serif text-lg font-semibold tracking-tight">
             {config.groupName}
           </Link>
-          {isAdmin && (
-            <Link to="/admin" className="text-xs font-medium text-stone-500 hover:text-ink">
-              Admin
-            </Link>
-          )}
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Link to="/admin" className="text-xs font-medium text-stone-500 hover:text-ink">
+                Admin
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => setTheme(resolvedDark ? "light" : "dark")}
+              aria-label={resolvedDark ? "Switch to light mode" : "Switch to dark mode"}
+              className="rounded-md p-1.5 text-stone-500 hover:bg-stone-100 hover:text-ink"
+            >
+              {resolvedDark ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
       </header>
 
