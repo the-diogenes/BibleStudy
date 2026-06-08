@@ -3,14 +3,23 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { getBooks, type BookSummary } from "../lib/bibleApi";
-import { listLessons, listStudies, myProgress, setProgress } from "../lib/db";
+import { listBookmarks, listLessons, listStudies, myProgress, setProgress } from "../lib/db";
 import { refLabel } from "../lib/refs";
-import type { Lesson, Study } from "../types";
+import type { Bookmark, Lesson, Study } from "../types";
 import Spinner from "../components/Spinner";
 import ShareButton from "../components/ShareButton";
 import VerseOfDayCard from "../components/VerseOfDayCard";
 import MeetingCard from "../components/MeetingCard";
-import { ChevronRight } from "../components/icons";
+import { BookmarkIcon, ChevronRight } from "../components/icons";
+
+function bookmarkPath(b: Bookmark): string {
+  return b.verse != null ? `/read/${b.book}/${b.chapter}#v${b.verse}` : `/read/${b.book}/${b.chapter}`;
+}
+
+function bookmarkLabel(b: Bookmark): string {
+  if (b.label) return b.label;
+  return b.verse != null ? `${b.book} ${b.chapter}:${b.verse}` : `${b.book} ${b.chapter}`;
+}
 
 const STATUS_STYLE: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-800",
@@ -25,6 +34,7 @@ export default function Home() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [progress, setProgressMap] = useState<Map<string, boolean>>(new Map());
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,7 +53,10 @@ export default function Home() {
         setStudies(s);
         const current = s[0];
         if (current) setLessons(await listLessons(current.id));
-        if (profile) setProgressMap(await myProgress(profile.id));
+        if (profile) {
+          setProgressMap(await myProgress(profile.id));
+          setBookmarks(await listBookmarks(profile.id));
+        }
       } catch {
         /* ignore */
       } finally {
@@ -96,6 +109,29 @@ export default function Home() {
           <VerseOfDayCard />
           <MeetingCard />
         </>
+      )}
+
+      {status === "member" && bookmarks.length > 0 && (
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-serif text-lg font-semibold">Your bookmarks</h2>
+            <Link to="/bookmarks" className="text-xs text-stone-500 underline">
+              View all
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {bookmarks.slice(0, 8).map((b) => (
+              <Link
+                key={b.id}
+                to={bookmarkPath(b)}
+                className="card inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium hover:bg-stone-50"
+              >
+                <BookmarkIcon className="h-3.5 w-3.5 text-amber-500" />
+                {bookmarkLabel(b)}
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {status !== "member" ? (

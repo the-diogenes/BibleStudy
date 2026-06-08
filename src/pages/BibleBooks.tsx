@@ -5,12 +5,13 @@ import { useSettings } from "../context/SettingsContext";
 import { useAuth } from "../context/AuthContext";
 import { getBookReads } from "../lib/db";
 import { parseHumanRef } from "../lib/refs";
+import { readHex, readTintStyle } from "../lib/readColor";
 import TranslationPicker from "../components/TranslationPicker";
 import Spinner from "../components/Spinner";
 import { BookmarkIcon } from "../components/icons";
 
 export default function BibleBooks() {
-  const { translation } = useSettings();
+  const { translation, readColor } = useSettings();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [books, setBooks] = useState<BookSummary[]>([]);
@@ -81,7 +82,11 @@ export default function BibleBooks() {
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-serif text-2xl font-semibold">{selected.commonName}</h2>
           <span className="inline-flex items-center gap-1.5 text-xs text-stone-400">
-            <span className="h-3 w-3 rounded-sm bg-emerald-100 ring-1 ring-emerald-300" /> read
+            <span
+              className="h-3 w-3 rounded-sm ring-1"
+              style={{ backgroundColor: `${readHex(readColor)}2e`, borderColor: readHex(readColor) }}
+            />{" "}
+            read
           </span>
         </div>
         <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
@@ -90,11 +95,10 @@ export default function BibleBooks() {
             return (
               <button
                 key={c}
-                className={`aspect-square rounded-xl border text-sm font-medium shadow-sm transition ${
-                  isRead
-                    ? "border-emerald-200 bg-emerald-100 text-emerald-800 hover:brightness-95"
-                    : "card hover:bg-stone-50"
+                className={`aspect-square rounded-xl border text-sm font-medium shadow-sm transition hover:brightness-95 ${
+                  isRead ? "" : "card hover:bg-stone-50"
                 }`}
+                style={isRead ? readTintStyle(readColor) : undefined}
                 onClick={() => navigate(`/read/${selected.id}/${c}`)}
               >
                 {c}

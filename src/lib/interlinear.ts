@@ -67,18 +67,95 @@ export async function getLexicon(): Promise<Record<string, StrongsEntry>> {
   return lexicon;
 }
 
-// Minimal, friendly expansion of the most common morphology code tokens so the
-// popover is readable even without a full parser.
+// Friendly expansion of the morphology code tokens used by the Berean tables
+// (covers the common Greek and Hebrew parsing abbreviations) so the popover is
+// readable even without a full parser. Unknown tokens pass through unchanged.
 const MORPH_HINTS: Record<string, string> = {
+  // Parts of speech
   N: "noun",
   V: "verb",
-  A: "adjective",
   Adj: "adjective",
-  R: "pronoun",
-  P: "preposition",
-  C: "conjunction",
-  D: "adverb",
+  Adv: "adverb",
+  Art: "article",
   T: "article",
+  Pro: "pronoun",
+  PPro: "personal pronoun",
+  RelPro: "relative pronoun",
+  DPro: "demonstrative pronoun",
+  IPro: "interrogative pronoun",
+  RefPro: "reflexive pronoun",
+  R: "pronoun",
+  Prep: "preposition",
+  P: "preposition",
+  Conj: "conjunction",
+  C: "conjunction",
+  DirObjM: "direct object marker",
+  Num: "number",
+  Interjection: "interjection",
+  Prtcl: "particle",
+  // Hebrew verb stems
+  Qal: "Qal",
+  Niphal: "Niphal",
+  Piel: "Piel",
+  Pual: "Pual",
+  Hiphil: "Hiphil",
+  Hophal: "Hophal",
+  Hitpael: "Hitpael",
+  // Aspect / tense / mood
+  Perf: "perfect",
+  Impf: "imperfect",
+  Impv: "imperative",
+  Inf: "infinitive",
+  Part: "participle",
+  Cohortative: "cohortative",
+  Jussive: "jussive",
+  Pres: "present",
+  Aor: "aorist",
+  Fut: "future",
+  Imperf: "imperfect",
+  Perfect: "perfect",
+  Plup: "pluperfect",
+  // Greek tense-voice-mood compact codes
+  PIA: "present indicative active",
+  PIM: "present indicative middle",
+  PIP: "present indicative passive",
+  AIA: "aorist indicative active",
+  AIM: "aorist indicative middle",
+  AIP: "aorist indicative passive",
+  FIA: "future indicative active",
+  IIA: "imperfect indicative active",
+  RIA: "perfect indicative active",
+  PPA: "present participle active",
+  APA: "aorist participle active",
+  // Person · gender · number (Hebrew lower-case forms)
+  "1cs": "1st c. sing.",
+  "2ms": "2nd m. sing.",
+  "2fs": "2nd f. sing.",
+  "3ms": "3rd m. sing.",
+  "3fs": "3rd f. sing.",
+  "1cp": "1st c. plur.",
+  "2mp": "2nd m. plur.",
+  "3mp": "3rd m. plur.",
+  "3fp": "3rd f. plur.",
+  ms: "masc. sing.",
+  fs: "fem. sing.",
+  mp: "masc. plur.",
+  fp: "fem. plur.",
+  // Greek person + number
+  "1S": "1st sing.",
+  "2S": "2nd sing.",
+  "3S": "3rd sing.",
+  "1P": "1st plur.",
+  "2P": "2nd plur.",
+  "3P": "3rd plur.",
+  // Greek case-number-gender (NSM etc.)
+  NMS: "nom. sing. masc.",
+  GMS: "gen. sing. masc.",
+  DMS: "dat. sing. masc.",
+  AMS: "acc. sing. masc.",
+  NFS: "nom. sing. fem.",
+  NNS: "nom. sing. neut.",
+  NMP: "nom. plur. masc.",
   NSM: "nom. sing. masc.",
   GSM: "gen. sing. masc.",
   DSM: "dat. sing. masc.",
@@ -89,8 +166,12 @@ const MORPH_HINTS: Record<string, string> = {
 
 export function describeMorph(morph?: string): string {
   if (!morph) return "";
-  return morph
-    .split(/[-\s]/)
-    .map((tok) => MORPH_HINTS[tok] || tok)
-    .join(" · ");
+  const parts = morph
+    .split(/[-\s|]+/)
+    .map((tok) => tok.trim())
+    .filter(Boolean)
+    .map((tok) => MORPH_HINTS[tok] || tok);
+  // If nothing was actually expanded, the code already speaks for itself.
+  const expanded = parts.join(" · ");
+  return expanded === morph ? "" : expanded;
 }

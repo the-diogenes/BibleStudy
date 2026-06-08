@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { DEFAULT_READ_COLOR } from "../lib/readColor";
 
 export type ThemePref = "light" | "dark" | "system";
 
@@ -10,6 +11,8 @@ interface Settings {
   theme: ThemePref;
   setTheme: (t: ThemePref) => void;
   resolvedDark: boolean;
+  readColor: string;
+  setReadColor: (c: string) => void;
 }
 
 const SettingsContext = createContext<Settings | undefined>(undefined);
@@ -21,10 +24,16 @@ interface Stored {
   translation: string;
   interlinear: boolean;
   theme: ThemePref;
+  readColor: string;
 }
 
 function load(): Stored {
-  const defaults: Stored = { translation: DEFAULT_TRANSLATION, interlinear: false, theme: "system" };
+  const defaults: Stored = {
+    translation: DEFAULT_TRANSLATION,
+    interlinear: false,
+    theme: "system",
+    readColor: DEFAULT_READ_COLOR,
+  };
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) return { ...defaults, ...(JSON.parse(raw) as Partial<Stored>) };
@@ -45,11 +54,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [translation, setTranslation] = useState(initial.translation);
   const [interlinear, setInterlinear] = useState(initial.interlinear);
   const [theme, setTheme] = useState<ThemePref>(initial.theme);
+  const [readColor, setReadColor] = useState(initial.readColor);
   const [systemDark, setSystemDark] = useState(systemPrefersDark);
 
   useEffect(() => {
-    localStorage.setItem(STORE_KEY, JSON.stringify({ translation, interlinear, theme }));
-  }, [translation, interlinear, theme]);
+    localStorage.setItem(
+      STORE_KEY,
+      JSON.stringify({ translation, interlinear, theme, readColor })
+    );
+  }, [translation, interlinear, theme, readColor]);
 
   // Track the OS preference so "system" stays in sync.
   useEffect(() => {
@@ -75,8 +88,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       theme,
       setTheme,
       resolvedDark,
+      readColor,
+      setReadColor,
     }),
-    [translation, interlinear, theme, resolvedDark]
+    [translation, interlinear, theme, resolvedDark, readColor]
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

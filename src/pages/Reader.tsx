@@ -20,24 +20,27 @@ import {
   addBookmark,
   clearHighlight,
   deleteBookmark,
+  getBookReads,
   getChapterBookmarks,
   getChapterHighlights,
   markChapterRead,
   setHighlight,
+  unmarkChapterRead,
 } from "../lib/db";
 import { HIGHLIGHT_TINT, type HighlightColor } from "../lib/highlight";
+import { readTintStyle } from "../lib/readColor";
 import type { Bookmark } from "../types";
 import TranslationPicker from "../components/TranslationPicker";
 import WordPopover from "../components/WordPopover";
 import ShareButton from "../components/ShareButton";
 import VerseActionsSheet from "../components/VerseActionsSheet";
 import Spinner from "../components/Spinner";
-import { ArrowLeft, BookmarkFilledIcon, BookmarkIcon } from "../components/icons";
+import { ArrowLeft, BookmarkFilledIcon, BookmarkIcon, CheckIcon } from "../components/icons";
 
 export default function Reader() {
   const { book = "", chapter = "1" } = useParams();
   const chapterNum = Number(chapter) || 1;
-  const { translation, interlinear, setInterlinear } = useSettings();
+  const { translation, interlinear, setInterlinear, readColor } = useSettings();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,6 +54,7 @@ export default function Reader() {
   const [popover, setPopover] = useState<InterlinearWord | null>(null);
   const [highlights, setHighlights] = useState<Map<number, string>>(new Map());
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [read, setRead] = useState(false);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const [glowVerse, setGlowVerse] = useState<number | null>(null);
 
@@ -112,12 +116,41 @@ export default function Reader() {
     };
   }, [profile, book, chapterNum]);
 
-  // Record the chapter as read once it loads successfully.
+  // Load existing read state for this chapter.
   useEffect(() => {
-    if (profile && data) {
+    if (!profile) {
+      setRead(false);
+      return;
+    }
+    let active = true;
+    getBookReads(profile.id, book)
+      .then((s) => active && setRead(s.has(chapterNum)))
+      .catch(() => active && setRead(false));
+    return () => {
+      active = false;
+    };
+  }, [profile, book, chapterNum]);
+
+  // Auto-record the chapter as read once it loads (unless undone this visit).
+  useEffect(() => {
+    if (profile && data && !read) {
+      setRead(true);
       void markChapterRead(profile.id, book, chapterNum);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, data, book, chapterNum]);
+
+  async function toggleRead() {
+    if (!profile) return;
+    const next = !read;
+    setRead(next);
+    try {
+      if (next) await markChapterRead(profile.id, book, chapterNum);
+      else await unmarkChapterRead(profile.id, book, chapterNum);
+    } catch {
+      setRead(!next);
+    }
+  }
 
   // Deep links like /read/JHN/3#v16 scroll to and briefly glow the verse.
   useEffect(() => {
@@ -209,7 +242,23 @@ export default function Reader() {
         >
           <ArrowLeft className="h-4 w-4" /> Books
         </button>
-        <TranslationPicker />
+        <div className="flex items-center gap-2">
+          {profile && (
+            <button
+              type="button"
+              onClick={() => void toggleRead()}
+              aria-pressed={read}
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                read ? "" : "border-stone-300 text-stone-500 hover:bg-stone-100"
+              }`}
+              style={read ? readTintStyle(readColor) : undefined}
+            >
+              <CheckIcon className="h-3.5 w-3.5" />
+              {read ? "Read" : "Mark read"}
+            </button>
+          )}
+          <TranslationPicker />
+        </div>
       </div>
 
       <div className="mb-3 flex items-center justify-between">
@@ -256,8 +305,7 @@ export default function Reader() {
         <article className="prose-scripture font-serif text-[1.075rem] leading-8 text-stone-800">
           {interlinear && !inter && (
             <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 font-sans text-xs text-amber-900">
-              Interlinear data for this chapter isn't bundled yet. Showing the translation.
-              See <span className="font-mono">scripts/build-interlinear.mjs</span>.
+              Original-language data isn't available for this chapter yet. Showing the translation.
             </p>
           )}
           {data.content.map((item, i) => {
