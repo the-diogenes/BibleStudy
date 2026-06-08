@@ -10,16 +10,24 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { isSupabaseConfigured } from "../lib/config";
+import { usernameToEmail } from "../lib/username";
 import type { Profile } from "../types";
 
 type AuthStatus = "loading" | "signed_out" | "member" | "not_invited" | "unconfigured";
+
+interface AuthResult {
+  error?: string;
+  needsConfirmation?: boolean;
+}
 
 interface AuthValue {
   status: AuthStatus;
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
-  signInWithEmail: (email: string) => Promise<{ error?: string }>;
+  signInWithPassword: (username: string, password: string) => Promise<AuthResult>;
+  signUpWithPassword: (username: string, password: string) => Promise<AuthResult>;
+  changePassword: (newPassword: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   updateDisplayName: (name: string) => Promise<{ error?: string }>;
@@ -51,8 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // No profile yet: try to create one. RLS only allows this for invited emails.
-      const fallbackName = (s.user.email || "Member").split("@")[0];
+      // No profile yet: try to create one. RLS only allows this for invited users.
+      const metaName = (s.user.user_metadata?.username as string | undefined) || "";
+      const fallbackName = metaName || (s.user.email || "Member").split("@")[0];
       const { data: created, error } = await supabase
         .from("profiles")
         .insert({ id: s.user.id, display_name: fallbackName })
@@ -95,13 +104,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [loadProfile]);
 
-  const signInWithEmail = useCallback(async (email: string) => {
+  const signInWithPassword = useCallback(async (username: string, password: string) => {
     if (!supabase) return { error: "App is not configured for sign-in yet." };
-    const redirectTo = window.location.origin + import.meta.env.BASE_URL;
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: redirectTo },
+    const { error } = await supabase.auth.signInWithPassword({
+      email: usernameToEmail(username),
+      password,
     });
+    return error ? { error: error.message } : {};
+  }, []);
+
+  const signUpWithPassword = useCallback(async (username: string, password: string) => {
+    if (!supabase) return { error: "App is not configured for sign-in yet." };
+    const { data, error } = await supabase.auth.signUp({
+      email: usernameToEmail(username),
+      password,
+      options: { data: { username: username.trim() } },
+    });
+    if (error) return { error: error.message };
+    // If email confirmation is enabled in Supabase, there is no session yet.
+    if (!data.session) return { needsConfirmation: true };
+    return {};
+  }, []);
+
+  const changePassword = useCallback(async (newPassword: string) => {
+    if (!supabase) return { error: "Not signed in." };
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     return error ? { error: error.message } : {};
   }, []);
 
@@ -136,7 +163,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     profile,
     isAdmin: profile?.role === "admin",
-    signInWithEmail,
+    signInWithPassword,
+    signUpWithPassword,
+    changePassword,
     signOut,
     refreshProfile,
     updateDisplayName,

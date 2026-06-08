@@ -2,13 +2,17 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
+import { emailToUsername } from "../lib/username";
 
 export default function Profile() {
-  const { profile, session, status, isAdmin, signOut, updateDisplayName } = useAuth();
+  const { profile, session, status, isAdmin, signOut, updateDisplayName, changePassword } = useAuth();
   const { translation } = useSettings();
   const [name, setName] = useState(profile?.display_name || "");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pwMsg, setPwMsg] = useState<string | null>(null);
+  const [pwBusy, setPwBusy] = useState(false);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -19,6 +23,20 @@ export default function Profile() {
     if (!error) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    }
+  }
+
+  async function savePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwBusy(true);
+    setPwMsg(null);
+    const { error } = await changePassword(pw);
+    setPwBusy(false);
+    if (error) setPwMsg(error);
+    else {
+      setPw("");
+      setPwMsg("Password updated.");
+      setTimeout(() => setPwMsg(null), 2500);
     }
   }
 
@@ -47,13 +65,32 @@ export default function Profile() {
           <input className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <p className="text-xs text-stone-400">
-          Signed in as {session?.user.email} {isAdmin && "· Admin"}
+          Signed in as {session?.user.email ? emailToUsername(session.user.email) : "member"}{" "}
+          {isAdmin && "· Admin"}
         </p>
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={busy}>
             {busy ? "Saving..." : "Save"}
           </button>
           {saved && <span className="text-sm text-emerald-600">Saved</span>}
+        </div>
+      </form>
+
+      <form onSubmit={savePassword} className="card space-y-3 p-4">
+        <p className="font-medium">Change password</p>
+        <input
+          type="password"
+          className="input"
+          placeholder="New password"
+          autoComplete="new-password"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+        />
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" disabled={pwBusy || pw.length < 6}>
+            {pwBusy ? "Updating..." : "Update password"}
+          </button>
+          {pwMsg && <span className="text-sm text-stone-500">{pwMsg}</span>}
         </div>
       </form>
 

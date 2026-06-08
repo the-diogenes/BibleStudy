@@ -14,6 +14,7 @@ import {
   updateLesson,
 } from "../lib/db";
 import type { Lesson, LessonStatus, Study } from "../types";
+import { emailToUsername, usernameToEmail } from "../lib/username";
 import Spinner from "../components/Spinner";
 
 export default function Admin() {
@@ -28,7 +29,7 @@ export default function Admin() {
 
 function Invites() {
   const [invites, setInvites] = useState<{ email: string; role: string }[]>([]);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [role, setRole] = useState("member");
   const [loading, setLoading] = useState(true);
 
@@ -43,9 +44,9 @@ function Invites() {
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
-    await addInvite(email.trim(), role);
-    setEmail("");
+    if (!username.trim()) return;
+    await addInvite(usernameToEmail(username), role);
+    setUsername("");
     await load();
   }
 
@@ -53,16 +54,17 @@ function Invites() {
     <section className="card p-4">
       <h2 className="font-serif text-lg font-semibold">Members</h2>
       <p className="mb-3 text-xs text-stone-500">
-        Only emails on this list can create an account. Add a member, then have them sign in with a
-        magic link.
+        Only usernames on this list can create an account. Add a member here, then have them go to
+        the login screen, choose "Create account," and set their own password.
       </p>
       <form onSubmit={add} className="mb-3 flex flex-wrap gap-2">
         <input
-          type="email"
+          type="text"
+          autoCapitalize="none"
           className="input flex-1"
-          placeholder="member@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          placeholder="username (e.g. lazorRaptor)"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
         <select
           className="rounded-lg border border-stone-300 px-2 text-sm"
@@ -72,7 +74,7 @@ function Invites() {
           <option value="member">Member</option>
           <option value="admin">Admin</option>
         </select>
-        <button className="btn-primary">Invite</button>
+        <button className="btn-primary">Add</button>
       </form>
       {loading ? (
         <Spinner />
@@ -81,7 +83,8 @@ function Invites() {
           {invites.map((i) => (
             <li key={i.email} className="flex items-center justify-between py-2">
               <span>
-                {i.email} <span className="text-xs text-stone-400">({i.role})</span>
+                {emailToUsername(i.email)}{" "}
+                <span className="text-xs text-stone-400">({i.role})</span>
               </span>
               <button
                 className="text-xs text-stone-400 hover:text-red-600"
@@ -94,7 +97,7 @@ function Invites() {
               </button>
             </li>
           ))}
-          {invites.length === 0 && <li className="py-2 text-stone-400">No invites yet.</li>}
+          {invites.length === 0 && <li className="py-2 text-stone-400">No members yet.</li>}
         </ul>
       )}
     </section>

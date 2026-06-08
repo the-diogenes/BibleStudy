@@ -249,10 +249,17 @@ do $$ begin alter publication supabase_realtime add table public.notes; exceptio
 do $$ begin alter publication supabase_realtime add table public.lessons; exception when duplicate_object then null; end $$;
 
 -- ───────────────────────── Bootstrap the first admin ─────────────────────────
--- Add yourself to the allowlist as admin (use the email you'll sign in with),
--- then just sign in once in the app - your profile inherits the admin role:
---      insert into public.member_invites (email, role) values ('you@example.com', 'admin')
+-- The group signs in with a USERNAME + password. Internally a username maps to
+-- "<username>@biblestudy.local". IMPORTANT: in the Supabase dashboard under
+-- Authentication -> Providers -> Email, turn OFF "Confirm email" (these synthetic
+-- addresses can't receive mail).
+--
+-- 1) Add your admin username to the allowlist (lowercase synthetic email):
+--      insert into public.member_invites (email, role)
+--      values ('lazorraptor@biblestudy.local', 'admin')
 --      on conflict (email) do update set role = 'admin';
--- (If you already signed in before adding yourself, run once to fix your role:)
+-- 2) Open the app -> Create account -> username "lazorRaptor" + your password.
+--    The new profile inherits the admin role automatically.
+-- (If you created the account before step 1, fix the role once:)
 --      update public.profiles set role = 'admin'
---      where id = (select id from auth.users where email = 'you@example.com');
+--      where id = (select id from auth.users where email = 'lazorraptor@biblestudy.local');
