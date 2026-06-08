@@ -13,6 +13,7 @@ import {
   deleteLesson,
   deleteMeeting,
   deleteStudy,
+  getRequireInvite,
   listInvites,
   listLessons,
   listMembers,
@@ -20,6 +21,7 @@ import {
   listStudies,
   removeInvite,
   setMemberRole,
+  setRequireInvite,
   setThreadStatus,
   threadMessages,
   updateLesson,
@@ -33,12 +35,69 @@ export default function Admin() {
   return (
     <div className="space-y-8">
       <h1 className="font-serif text-2xl font-semibold">Admin</h1>
+      <AccessControl />
       <Members />
       <MeetingsAdmin />
       <FeedbackInbox />
       <Invites />
       <Curriculum />
     </div>
+  );
+}
+
+function AccessControl() {
+  const [requireInvite, setRequire] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getRequireInvite()
+      .then(setRequire)
+      .catch(() => setRequire(false));
+  }, []);
+
+  async function toggle() {
+    if (requireInvite == null) return;
+    const next = !requireInvite;
+    setBusy(true);
+    setRequire(next);
+    try {
+      await setRequireInvite(next);
+    } catch {
+      setRequire(!next);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card p-4">
+      <h2 className="font-serif text-lg font-semibold">Who can join</h2>
+      <div className="mt-2 flex items-start justify-between gap-3">
+        <p className="text-sm text-stone-500">
+          {requireInvite
+            ? "Invite-only: only usernames on the members list (below) can create an account."
+            : "Open: anyone with the link can create their own account."}
+        </p>
+        <button
+          type="button"
+          onClick={() => void toggle()}
+          disabled={busy || requireInvite == null}
+          aria-pressed={!!requireInvite}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+            requireInvite ? "bg-ink" : "bg-stone-300"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+              requireInvite ? "left-[1.375rem]" : "left-0.5"
+            }`}
+          />
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-stone-400">
+        {requireInvite == null ? "Loading…" : "Require an invite to join"}
+      </p>
+    </section>
   );
 }
 

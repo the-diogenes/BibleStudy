@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_READ_COLOR } from "../lib/readColor";
+import { isDarkTheme, themeClass, THEME_CLASSES, type ThemeId } from "../lib/themes";
 
-export type ThemePref = "light" | "dark" | "system";
+export type ThemePref = ThemeId;
 
 interface Settings {
   translation: string;
@@ -73,11 +74,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  const resolvedDark = theme === "dark" || (theme === "system" && systemDark);
+  // Resolve "system" to an actual theme, then derive darkness + the <html> class.
+  const applied: Exclude<ThemePref, "system"> =
+    theme === "system" ? (systemDark ? "dark" : "light") : theme;
+  const resolvedDark = isDarkTheme(applied);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", resolvedDark);
-  }, [resolvedDark]);
+    const el = document.documentElement;
+    el.classList.remove(...THEME_CLASSES);
+    const cls = themeClass(applied);
+    if (cls) el.classList.add(cls);
+  }, [applied]);
 
   const value = useMemo(
     () => ({

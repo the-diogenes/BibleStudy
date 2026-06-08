@@ -324,6 +324,23 @@ export async function removeInvite(email: string): Promise<void> {
   if (error) throw error;
 }
 
+// ───────────────────────── App settings ─────────────────────────
+export async function getRequireInvite(): Promise<boolean> {
+  if (!supabase) return false;
+  const { data } = await supabase
+    .from("app_settings")
+    .select("require_invite")
+    .eq("id", 1)
+    .maybeSingle();
+  return Boolean((data as { require_invite?: boolean } | null)?.require_invite);
+}
+
+export async function setRequireInvite(value: boolean): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("app_settings").update({ require_invite: value }).eq("id", 1);
+  if (error) throw error;
+}
+
 // ───────────────────────── Members (admin roster) ─────────────────────────
 export async function listMembers(): Promise<Profile[]> {
   const sb = requireSupabase();
@@ -553,6 +570,20 @@ export async function unmarkChapterRead(
     .eq("book", book)
     .eq("chapter", chapter);
   if (error) throw error;
+}
+
+export async function getLastRead(
+  userId: string
+): Promise<{ book: string; chapter: number } | null> {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from("reads")
+    .select("book, chapter, read_at")
+    .eq("user_id", userId)
+    .order("read_at", { ascending: false })
+    .limit(1);
+  const row = ((data as { book: string; chapter: number }[]) || [])[0];
+  return row ? { book: row.book, chapter: row.chapter } : null;
 }
 
 export async function getBookReads(userId: string, book: string): Promise<Set<number>> {

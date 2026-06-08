@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getBooks, type BookSummary } from "../lib/bibleApi";
 import { useSettings } from "../context/SettingsContext";
 import { useAuth } from "../context/AuthContext";
-import { getBookReads } from "../lib/db";
+import { getBookReads, getLastRead } from "../lib/db";
 import { parseHumanRef } from "../lib/refs";
 import { readHex, readTintStyle } from "../lib/readColor";
 import TranslationPicker from "../components/TranslationPicker";
@@ -19,6 +19,7 @@ export default function BibleBooks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reads, setReads] = useState<Set<number>>(new Set());
+  const [lastRead, setLastRead] = useState<{ book: string; chapter: number } | null>(null);
   const [query, setQuery] = useState("");
   const [jumpError, setJumpError] = useState(false);
 
@@ -54,6 +55,25 @@ export default function BibleBooks() {
       active = false;
     };
   }, [profile, selected]);
+
+  useEffect(() => {
+    if (!profile) {
+      setLastRead(null);
+      return;
+    }
+    let active = true;
+    getLastRead(profile.id)
+      .then((r) => active && setLastRead(r))
+      .catch(() => active && setLastRead(null));
+    return () => {
+      active = false;
+    };
+  }, [profile]);
+
+  const lastReadBookName = useMemo(
+    () => (lastRead ? books.find((b) => b.id === lastRead.book)?.commonName || lastRead.book : null),
+    [books, lastRead]
+  );
 
   const { ot, nt } = useMemo(() => {
     const ot = books.filter((b) => b.order <= 39);
@@ -155,8 +175,24 @@ export default function BibleBooks() {
           Greek &amp; Hebrew alphabet guide
         </Link>
       </div>
-      <BookGroup title="Old Testament" books={ot} onSelect={selectBook} />
-      <BookGroup title="New Testament" books={nt} onSelect={selectBook} />
+      {lastRead && lastReadBookName && (
+        <Link
+          to={`/read/${lastRead.book}/${lastRead.chapter}`}
+          className="card mb-5 flex items-center justify-between gap-3 px-4 py-3 hover:bg-stone-50"
+        >
+          <span className="min-w-0">
+            <span className="block text-xs font-semibold uppercase tracking-wide text-stone-400">
+              Continue reading
+            </span>
+            <span className="block truncate font-serif text-base font-medium">
+              {lastReadBookName} {lastRead.chapter}
+            </span>
+          </span>
+          <span className="shrink-0 text-stone-400">&rarr;</span>
+        </Link>
+      )}
+      <BookGroup title="Old Testament" books={ot} onSelect={selectBook} lastBook={lastRead?.book} />
+      <BookGroup title="New Testament" books={nt} onSelect={selectBook} lastBook={lastRead?.book} />
     </div>
   );
 }
@@ -165,10 +201,12 @@ function BookGroup({
   title,
   books,
   onSelect,
+  lastBook,
 }: {
   title: string;
   books: BookSummary[];
   onSelect: (b: BookSummary) => void;
+  lastBook?: string;
 }) {
   if (books.length === 0) return null;
   return (
@@ -179,9 +217,14 @@ function BookGroup({
           <button
             key={b.id}
             onClick={() => onSelect(b)}
-            className="card px-3 py-2.5 text-left text-sm font-medium hover:bg-stone-50"
+            className="card flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-stone-50"
           >
-            {b.commonName}
+            <span className="min-w-0 truncate">{b.commonName}</span>
+            {lastBook === b.id && (
+              <span className="chip shrink-0 bg-stone-100 text-[0.625rem] text-stone-500">
+                last read
+              </span>
+            )}
           </button>
         ))}
       </div>

@@ -5,14 +5,137 @@
 :root {
   --c-parchment: 250 249 247;
   --c-ink: 28 25 23;
+  --c-woc: 185 28 28; /* words of Christ (red-700) */
   color-scheme: light;
 }
 
 html.dark {
   --c-parchment: 27 23 20;
   --c-ink: 236 231 224;
+  --c-woc: 248 113 113; /* red-400, readable on dark */
   color-scheme: dark;
 }
+
+/* Words of Christ (red-letter). The verse spans get this class. */
+.woc {
+  color: rgb(var(--c-woc));
+}
+
+/* ─────────────── Cherry Blossom (gentle pink) ─────────────── */
+html.theme-cherry {
+  --c-parchment: 253 242 246;
+  --c-ink: 60 26 43;
+  --c-woc: 159 18 57;
+  color-scheme: light;
+}
+html.theme-cherry .bg-white { background-color: #fffafc; }
+html.theme-cherry .bg-white\/95 { background-color: rgba(255, 250, 252, 0.95); }
+html.theme-cherry .bg-white\/90 { background-color: rgba(255, 250, 252, 0.9); }
+html.theme-cherry .bg-stone-50 { background-color: #fbeef3; }
+html.theme-cherry .bg-stone-100 { background-color: #f6e1ea; }
+html.theme-cherry .bg-stone-200 { background-color: #efd0dd; }
+html.theme-cherry .bg-stone-300 { background-color: #e3b3c8; }
+html.theme-cherry .hover\:bg-white:hover { background-color: #f6e1ea; }
+html.theme-cherry .hover\:bg-stone-50:hover { background-color: #f9e7ee; }
+html.theme-cherry .hover\:bg-stone-200:hover { background-color: #e9c4d4; }
+html.theme-cherry .border-stone-100 { border-color: #f3d8e3; }
+html.theme-cherry .border-stone-200 { border-color: #ecc9d7; }
+html.theme-cherry .border-stone-300 { border-color: #e0b0c4; }
+html.theme-cherry .divide-stone-100 > :not([hidden]) ~ :not([hidden]) { border-color: #f3d8e3; }
+
+/* ─────────────── Desert (warm sand) ─────────────── */
+html.theme-desert {
+  --c-parchment: 243 233 210;
+  --c-ink: 60 47 33;
+  --c-woc: 158 49 27;
+  color-scheme: light;
+}
+html.theme-desert .bg-white { background-color: #fdf8ec; }
+html.theme-desert .bg-white\/95 { background-color: rgba(253, 248, 236, 0.95); }
+html.theme-desert .bg-white\/90 { background-color: rgba(253, 248, 236, 0.9); }
+html.theme-desert .bg-stone-50 { background-color: #efe4cb; }
+html.theme-desert .bg-stone-100 { background-color: #eaddc0; }
+html.theme-desert .bg-stone-200 { background-color: #ddcca6; }
+html.theme-desert .bg-stone-300 { background-color: #cbb482; }
+html.theme-desert .hover\:bg-white:hover { background-color: #eaddc0; }
+html.theme-desert .hover\:bg-stone-50:hover { background-color: #ece1c8; }
+html.theme-desert .hover\:bg-stone-200:hover { background-color: #d6c39a; }
+html.theme-desert .border-stone-100 { border-color: #ecdfc6; }
+html.theme-desert .border-stone-200 { border-color: #e2d2b2; }
+html.theme-desert .border-stone-300 { border-color: #cdb78a; }
+html.theme-desert .divide-stone-100 > :not([hidden]) ~ :not([hidden]) { border-color: #ecdfc6; }
+
+/* ─────────────── Forest (deep green, dark) ─────────────── */
+html.theme-forest {
+  --c-parchment: 18 32 26;
+  --c-ink: 226 233 223;
+  --c-woc: 255 150 138;
+  color-scheme: dark;
+}
+html.theme-forest .bg-white { background-color: #1b2c23; }
+html.theme-forest .bg-white\/95 { background-color: rgba(27, 44, 35, 0.95); }
+html.theme-forest .bg-white\/90 { background-color: rgba(27, 44, 35, 0.9); }
+html.theme-forest .bg-stone-50 { background-color: #16261e; }
+html.theme-forest .bg-stone-100 { background-color: #18281f; }
+html.theme-forest .bg-stone-200 { background-color: #24382c; }
+html.theme-forest .bg-stone-300 { background-color: #3a5343; }
+html.theme-forest .hover\:bg-white:hover { background-color: #24382c; }
+html.theme-forest .hover\:bg-stone-50:hover { background-color: #1d2f25; }
+html.theme-forest .hover\:bg-stone-200:hover { background-color: #2b4234; }
+html.theme-forest .border-stone-100 { border-color: #1d2f25; }
+html.theme-forest .border-stone-200 { border-color: #25382d; }
+html.theme-forest .border-stone-300 { border-color: #324a3a; }
+html.theme-forest .divide-stone-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1d2f25; }
+html.theme-forest .text-stone-300 { color: #6f8678; }
+html.theme-forest .text-stone-400 { color: #94a99c; }
+html.theme-forest .text-stone-500 { color: #aabfb2; }
+html.theme-forest .text-stone-600 { color: #c0d3c7; }
+html.theme-forest .text-stone-700 { color: #d2e1d8; }
+html.theme-forest .text-stone-800 { color: #e0ebe3; }
+html.theme-forest .text-stone-900 { color: #eef4ef; }
+html.theme-forest .bg-amber-50 { background-color: #2a2a14; }
+html.theme-forest .text-amber-900 { color: #f0d9a0; }
+html.theme-forest .text-amber-700 { color: #e7c47a; }
+html.theme-forest .bg-red-50 { background-color: #2c1a18; }
+html.theme-forest .text-red-700, html.theme-forest .text-red-600 { color: #f3a79c; }
+html.theme-forest .bg-emerald-100 { background-color: #16302a; }
+html.theme-forest .text-emerald-800, html.theme-forest .text-emerald-600 { color: #7fd8be; }
+
+/* ─────────────── Ocean (deep navy, dark) ─────────────── */
+html.theme-ocean {
+  --c-parchment: 13 26 40;
+  --c-ink: 224 238 247;
+  --c-woc: 255 143 135;
+  color-scheme: dark;
+}
+html.theme-ocean .bg-white { background-color: #15263a; }
+html.theme-ocean .bg-white\/95 { background-color: rgba(21, 38, 58, 0.95); }
+html.theme-ocean .bg-white\/90 { background-color: rgba(21, 38, 58, 0.9); }
+html.theme-ocean .bg-stone-50 { background-color: #112033; }
+html.theme-ocean .bg-stone-100 { background-color: #13243a; }
+html.theme-ocean .bg-stone-200 { background-color: #1f3550; }
+html.theme-ocean .bg-stone-300 { background-color: #335074; }
+html.theme-ocean .hover\:bg-white:hover { background-color: #1f3550; }
+html.theme-ocean .hover\:bg-stone-50:hover { background-color: #16293f; }
+html.theme-ocean .hover\:bg-stone-200:hover { background-color: #264064; }
+html.theme-ocean .border-stone-100 { border-color: #1c3147; }
+html.theme-ocean .border-stone-200 { border-color: #243c54; }
+html.theme-ocean .border-stone-300 { border-color: #314e6e; }
+html.theme-ocean .divide-stone-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1c3147; }
+html.theme-ocean .text-stone-300 { color: #6f8298; }
+html.theme-ocean .text-stone-400 { color: #93a6bc; }
+html.theme-ocean .text-stone-500 { color: #aabdd2; }
+html.theme-ocean .text-stone-600 { color: #c0d2e4; }
+html.theme-ocean .text-stone-700 { color: #d2e0ee; }
+html.theme-ocean .text-stone-800 { color: #e0ebf5; }
+html.theme-ocean .text-stone-900 { color: #eef4fb; }
+html.theme-ocean .bg-amber-50 { background-color: #232a16; }
+html.theme-ocean .text-amber-900 { color: #f0d9a0; }
+html.theme-ocean .text-amber-700 { color: #e7c47a; }
+html.theme-ocean .bg-red-50 { background-color: #2c1a18; }
+html.theme-ocean .text-red-700, html.theme-ocean .text-red-600 { color: #f3a79c; }
+html.theme-ocean .bg-emerald-100 { background-color: #163029; }
+html.theme-ocean .text-emerald-800, html.theme-ocean .text-emerald-600 { color: #7fd8be; }
 
 html,
 body,

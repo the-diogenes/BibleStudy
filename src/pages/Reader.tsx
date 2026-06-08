@@ -6,6 +6,7 @@ import {
   verseText,
   type BookSummary,
   type Chapter,
+  type VerseContentPart,
 } from "../lib/bibleApi";
 import {
   getChapterInterlinear,
@@ -36,6 +37,21 @@ import ShareButton from "../components/ShareButton";
 import VerseActionsSheet from "../components/VerseActionsSheet";
 import Spinner from "../components/Spinner";
 import { ArrowLeft, BookmarkFilledIcon, BookmarkIcon, CheckIcon } from "../components/icons";
+
+/** Render verse text, coloring Jesus's words (red-letter) where the API marks them. */
+function renderVerseParts(parts?: VerseContentPart[]) {
+  if (!parts) return null;
+  return parts.map((p, i) => {
+    const text = typeof p === "string" ? p : typeof p.text === "string" ? p.text : "";
+    if (!text) return null;
+    const woc = typeof p === "object" && (p as { wordsOfJesus?: boolean }).wordsOfJesus === true;
+    return (
+      <span key={i} className={woc ? "woc" : undefined}>
+        {text}{" "}
+      </span>
+    );
+  });
+}
 
 export default function Reader() {
   const { book = "", chapter = "1" } = useParams();
@@ -131,9 +147,10 @@ export default function Reader() {
     };
   }, [profile, book, chapterNum]);
 
-  // Auto-record the chapter as read once it loads (unless undone this visit).
+  // Auto-record the chapter as read once it loads. We always refresh the timestamp
+  // so "continue reading" / last-read tracking points at the most recent chapter.
   useEffect(() => {
-    if (profile && data && !read) {
+    if (profile && data) {
       setRead(true);
       void markChapterRead(profile.id, book, chapterNum);
     }
@@ -360,7 +377,7 @@ export default function Reader() {
                       })}
                     </span>
                   ) : (
-                    <span>{verseText(item.content)} </span>
+                    <span>{renderVerseParts(item.content)}</span>
                   )}
                 </p>
               );

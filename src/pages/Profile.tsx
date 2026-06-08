@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useSettings, type ThemePref } from "../context/SettingsContext";
+import { useSettings } from "../context/SettingsContext";
 import { emailToUsername } from "../lib/username";
 import { READ_COLORS } from "../lib/readColor";
+import { THEMES } from "../lib/themes";
 import { config } from "../lib/config";
 import TranslationPicker from "../components/TranslationPicker";
 
@@ -141,18 +142,26 @@ export default function Profile() {
         <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400">Appearance</h2>
 
         <div className="card p-4 text-sm">
-          <p className="font-medium">Theme</p>
-          <div className="mt-2 flex gap-1 rounded-lg bg-stone-100 p-1">
-            {(["light", "dark", "system"] as ThemePref[]).map((t) => (
+          <p className="font-medium">Color mode</p>
+          <p className="mt-1 text-stone-500">Pick what feels good to read in. Saved on this device.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {THEMES.map((t) => (
               <button
-                key={t}
+                key={t.id}
                 type="button"
-                onClick={() => setTheme(t)}
-                className={`flex-1 rounded-md py-1.5 font-medium capitalize transition ${
-                  theme === t ? "bg-white text-ink shadow-sm" : "text-stone-500"
+                onClick={() => setTheme(t.id)}
+                aria-pressed={theme === t.id}
+                className={`flex items-center gap-2 rounded-xl border-2 p-2 text-left transition ${
+                  theme === t.id ? "border-ink" : "border-stone-200 hover:border-stone-300"
                 }`}
               >
-                {t}
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ring-1 ring-black/10"
+                  style={{ backgroundColor: t.bg, color: t.fg }}
+                >
+                  Aa
+                </span>
+                <span className="min-w-0 truncate text-xs font-medium">{t.label}</span>
               </button>
             ))}
           </div>

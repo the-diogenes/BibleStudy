@@ -303,10 +303,31 @@ set username = split_part(u.email, '@', 1)
 from auth.users u
 where u.id = p.id and (p.username is null or p.username = '');
 
+-- ───────────────────────── App settings (admin-controlled) ─────────────────────────
+-- Single-row settings table. require_invite flips the allowlist gate on/off.
+create table if not exists public.app_settings (
+  id             int primary key default 1,
+  require_invite boolean not null default false,
+  constraint app_settings_singleton check (id = 1)
+);
+insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+
+create or replace function public.require_invite()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce((select require_invite from public.app_settings where id = 1), false);
+$$;
+
+alter table public.app_settings enable row level security;
+drop policy if exists app_settings_read on public.app_settings;
+create policy app_settings_read on public.app_settings for select using (true);
+drop policy if exists app_settings_write on public.app_settings;
+create policy app_settings_write on public.app_settings
+  for update using (public.is_admin()) with check (public.is_admin());
+
 -- Re-create ensure_profile so it also records the username on first login.
--- OPEN REGISTRATION: anyone who signs up gets a member profile. If their email
--- happens to be on the member_invites allowlist, that role is honored (so you can
--- pre-assign admins), otherwise they default to 'member'.
+-- OPEN REGISTRATION by default: anyone who signs up gets a member profile. Turn on
+-- app_settings.require_invite (admin setting) to gate joining to the allowlist.
+-- If their email is on member_invites, that role is honored (pre-assign admins).
 create or replace function public.ensure_profile(p_display_name text default null)
 returns setof public.profiles
 language plpgsql security definer set search_path = public as $$
@@ -322,6 +343,11 @@ begin
   if exists (select 1 from public.profiles where id = uid) then
     return query select * from public.profiles where id = uid;
     return;
+  end if;
+
+  -- Allowlist gate is admin-toggleable (see app_settings.require_invite).
+  if public.require_invite() and not public.is_invited() then
+    raise exception 'not invited' using errcode = '42501';
   end if;
 
   select role into inv_role from public.member_invites
