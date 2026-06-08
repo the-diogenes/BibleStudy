@@ -11,6 +11,7 @@ import Notes from "./pages/Notes";
 import Profile from "./pages/Profile";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Reference from "./pages/Reference";
 import Admin from "./pages/Admin";
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/reference" element={<Reference />} />
           <Route
             path="/admin"
             element={

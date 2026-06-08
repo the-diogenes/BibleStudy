@@ -38,8 +38,16 @@ export default function WordPopover({
             <span className="chip bg-stone-100 font-mono text-stone-600">{word.strongs}</span>
           )}
         </div>
+        {entry?.pronunciation && (
+          <p className="mt-1 text-sm font-medium text-stone-600">
+            <span aria-hidden>🔊 </span>
+            {entry.pronunciation}
+          </p>
+        )}
         {(word.translit || entry?.translit) && (
-          <p className="mt-1 text-sm italic text-stone-500">{word.translit || entry?.translit}</p>
+          <p className="mt-1 text-sm italic text-stone-500">
+            {word.translit || entry?.translit}
+          </p>
         )}
         {word.morph && (
           <p className="mt-2 text-xs text-stone-500">

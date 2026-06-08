@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getBooks, type BookSummary } from "../lib/bibleApi";
 import { useSettings } from "../context/SettingsContext";
 import { parseHumanRef } from "../lib/refs";
@@ -81,7 +81,7 @@ export default function BibleBooks() {
         <h1 className="font-serif text-2xl font-semibold">Bible</h1>
         <TranslationPicker />
       </div>
-      <form onSubmit={jump} className="mb-5">
+      <form onSubmit={jump} className="mb-3">
         <input
           className="input"
           placeholder="Jump to a reference, e.g. John 3:16"
@@ -97,6 +97,13 @@ export default function BibleBooks() {
           </p>
         )}
       </form>
+      <Link
+        to="/reference"
+        className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-ink"
+      >
+        <span className="font-serif text-lg">Αα · אב</span>
+        Greek &amp; Hebrew alphabet guide
+      </Link>
       <BookGroup title="Old Testament" books={ot} onSelect={setSelected} />
       <BookGroup title="New Testament" books={nt} onSelect={setSelected} />
     </div>

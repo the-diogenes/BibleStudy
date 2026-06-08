@@ -7,7 +7,13 @@ import {
   type BookSummary,
   type Chapter,
 } from "../lib/bibleApi";
-import { getChapterInterlinear, type ChapterInterlinear, type InterlinearWord } from "../lib/interlinear";
+import {
+  getChapterInterlinear,
+  getLexicon,
+  type ChapterInterlinear,
+  type InterlinearWord,
+  type StrongsEntry,
+} from "../lib/interlinear";
 import { useSettings } from "../context/SettingsContext";
 import { useAuth } from "../context/AuthContext";
 import { clearHighlight, getChapterHighlights, setHighlight } from "../lib/db";
@@ -30,6 +36,7 @@ export default function Reader() {
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [data, setData] = useState<Chapter | null>(null);
   const [inter, setInter] = useState<ChapterInterlinear | null>(null);
+  const [lex, setLex] = useState<Record<string, StrongsEntry> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [popover, setPopover] = useState<InterlinearWord | null>(null);
@@ -61,10 +68,11 @@ export default function Reader() {
     }
     let active = true;
     getChapterInterlinear(book, chapterNum).then((d) => active && setInter(d));
+    if (!lex) getLexicon().then((l) => active && setLex(l));
     return () => {
       active = false;
     };
-  }, [interlinear, book, chapterNum]);
+  }, [interlinear, book, chapterNum, lex]);
 
   useEffect(() => {
     if (!profile) {
@@ -210,20 +218,28 @@ export default function Reader() {
                   </button>
                   {words ? (
                     <span className="inline-flex flex-wrap gap-x-3 gap-y-2 align-top">
-                      {words.map((w, wi) => (
-                        <button
-                          key={wi}
-                          onClick={() => setPopover(w)}
-                          className="inline-flex flex-col items-center rounded px-0.5 leading-tight hover:bg-amber-50"
-                        >
-                          <span className="font-serif text-lg">{w.w}</span>
-                          {(w.gloss || w.translit) && (
-                            <span className="font-sans text-[0.6rem] text-stone-400">
-                              {w.gloss || w.translit}
-                            </span>
-                          )}
-                        </button>
-                      ))}
+                      {words.map((w, wi) => {
+                        const pron = w.strongs ? lex?.[w.strongs]?.pronunciation : undefined;
+                        return (
+                          <button
+                            key={wi}
+                            onClick={() => setPopover(w)}
+                            className="inline-flex flex-col items-center rounded px-0.5 leading-tight hover:bg-amber-50"
+                          >
+                            <span className="font-serif text-lg">{w.w}</span>
+                            {pron && (
+                              <span className="font-sans text-[0.6rem] font-medium text-stone-500">
+                                {pron}
+                              </span>
+                            )}
+                            {(w.gloss || w.translit) && (
+                              <span className="font-sans text-[0.6rem] italic text-stone-400">
+                                {w.gloss || w.translit}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </span>
                   ) : (
                     <span>{verseText(item.content)} </span>
