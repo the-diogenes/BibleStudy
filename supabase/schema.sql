@@ -250,16 +250,16 @@ do $$ begin alter publication supabase_realtime add table public.lessons; except
 
 -- ───────────────────────── Bootstrap the first admin ─────────────────────────
 -- The group signs in with a USERNAME + password. Internally a username maps to
--- "<username>@biblestudy.local". IMPORTANT: in the Supabase dashboard under
+-- "<username>@biblestudy.app". IMPORTANT: in the Supabase dashboard under
 -- Authentication -> Providers -> Email, turn OFF "Confirm email" (these synthetic
 -- addresses can't receive mail).
 --
 -- 1) Add your admin username to the allowlist (lowercase synthetic email):
 --      insert into public.member_invites (email, role)
---      values ('lazorraptor@biblestudy.local', 'admin')
+--      values ('lazorraptor@biblestudy.app', 'admin')
 --      on conflict (email) do update set role = 'admin';
 -- 2) Open the app -> Create account -> username "lazorRaptor" + your password.
 --    The new profile inherits the admin role automatically.
 -- (If you created the account before step 1, fix the role once:)
 --      update public.profiles set role = 'admin'
---      where id = (select id from auth.users where email = 'lazorraptor@biblestudy.local');
+--      where id = (select id from auth.users where email = 'lazorraptor@biblestudy.app');

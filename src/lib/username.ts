@@ -1,7 +1,7 @@
 // The group signs in with a USERNAME + password. Supabase Auth is email-based,
 // so we map each username to a stable synthetic email under a reserved domain.
 // (No real email is needed; password is the credential.)
-export const USERNAME_EMAIL_DOMAIN = "biblestudy.local";
+export const USERNAME_EMAIL_DOMAIN = "biblestudy.app";
 
 export function usernameToEmail(username: string): string {
   return `${username.trim().toLowerCase()}@${USERNAME_EMAIL_DOMAIN}`;
