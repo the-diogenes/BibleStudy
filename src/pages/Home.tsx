@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useGroups } from "../context/GroupContext";
 import { useSettings } from "../context/SettingsContext";
 import { getBooks, type BookSummary } from "../lib/bibleApi";
 import { listBookmarks, listLessons, listStudies, myProgress, setProgress } from "../lib/db";
@@ -29,7 +30,8 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function Home() {
-  const { status, profile, isAdmin } = useAuth();
+  const { status, profile } = useAuth();
+  const { activeGroup, activeGroupId, isGroupAdmin } = useGroups();
   const { translation } = useSettings();
   const [studies, setStudies] = useState<Study[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -43,17 +45,17 @@ export default function Home() {
   }, [translation]);
 
   useEffect(() => {
-    if (status !== "member") {
+    if (status !== "member" || !activeGroupId) {
       setLoading(false);
       return;
     }
     (async () => {
       setLoading(true);
       try {
-        const s = await listStudies();
+        const s = await listStudies(activeGroupId);
         setStudies(s);
         const current = s[0];
-        if (current) setLessons(await listLessons(current.id));
+        setLessons(current ? await listLessons(current.id) : []);
         if (profile) {
           setProgressMap(await myProgress(profile.id));
           setBookmarks(await listBookmarks(profile.id));
@@ -64,7 +66,7 @@ export default function Home() {
         setLoading(false);
       }
     })();
-  }, [status, profile]);
+  }, [status, profile, activeGroupId]);
 
   async function toggle(lesson: Lesson) {
     if (!profile) return;
@@ -88,7 +90,12 @@ export default function Home() {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl bg-[#1c1917] p-5 text-[#f5f2ec]">
-        <p className="text-xs uppercase tracking-wide text-[#a8a29e]">Welcome</p>
+        <Link
+          to="/groups"
+          className="text-xs uppercase tracking-wide text-[#a8a29e] hover:text-[#f5f2ec]"
+        >
+          {activeGroup ? activeGroup.name : "Welcome"}
+        </Link>
         <h1 className="mt-1 font-serif text-2xl font-semibold">
           {current ? current.title : "Let's study the Word"}
         </h1>
@@ -148,9 +155,9 @@ export default function Home() {
         <div className="card p-5 text-sm text-stone-600">
           <p className="font-medium text-ink">No study plan yet.</p>
           <p className="mt-1">
-            {isAdmin ? (
+            {isGroupAdmin ? (
               <>
-                Head to <Link className="underline" to="/admin">Admin</Link> to create your first
+                Head to <Link className="underline" to="/groups">Groups</Link> to create your first
                 study and add lessons.
               </>
             ) : (
@@ -162,8 +169,8 @@ export default function Home() {
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="font-serif text-lg font-semibold">Checklist</h2>
-            {isAdmin && (
-              <Link to="/admin" className="text-xs text-stone-500 underline">
+            {isGroupAdmin && (
+              <Link to="/groups" className="text-xs text-stone-500 underline">
                 Edit
               </Link>
             )}

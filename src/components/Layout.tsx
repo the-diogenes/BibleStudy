@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { config, isSupabaseConfigured } from "../lib/config";
 import { useAuth } from "../context/AuthContext";
+import { useGroups } from "../context/GroupContext";
 import { useSettings } from "../context/SettingsContext";
 import { BookIcon, ChatIcon, HomeIcon, MailIcon, MoonIcon, NoteIcon, SunIcon, UserIcon } from "./icons";
 
@@ -14,16 +15,24 @@ const tabs = [
 
 export default function Layout() {
   const { isAdmin } = useAuth();
+  const { activeGroup, groups } = useGroups();
   const { resolvedDark, setTheme } = useSettings();
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col">
       <header className="sticky top-0 z-20 border-b border-stone-200 bg-parchment/90 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-3">
-          <Link to="/" className="font-serif text-lg font-semibold tracking-tight">
+          <Link to="/" className="min-w-0 font-serif text-lg font-semibold tracking-tight">
             {config.groupName}
           </Link>
           <div className="flex items-center gap-2">
+            <Link
+              to="/groups"
+              className="max-w-[40vw] truncate rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600 hover:text-ink"
+              title="Switch or manage groups"
+            >
+              {activeGroup ? activeGroup.name : groups.length ? "Choose group" : "Join a group"}
+            </Link>
             {isAdmin && (
               <Link to="/admin" className="text-xs font-medium text-stone-500 hover:text-ink">
                 Admin

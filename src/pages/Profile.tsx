@@ -170,6 +170,9 @@ export default function Profile() {
 
       {/* ─────────── More ─────────── */}
       <div className="flex flex-wrap gap-3">
+        <Link to="/groups" className="btn-ghost">
+          My groups
+        </Link>
         <Link to="/bookmarks" className="btn-ghost">
           Bookmarks
         </Link>

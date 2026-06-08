@@ -545,6 +545,292 @@ do $$ begin alter publication supabase_realtime add table public.feedback_messag
 do $$ begin alter publication supabase_realtime add table public.meetings; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.meeting_rsvps; exception when duplicate_object then null; end $$;
 
+-- ═══════════════════════════════════════════════════════════════════════════
+--  Study groups (multi-tenant). A user can create up to 5 groups and join any
+--  number via a share code. Studies, discussions, notes, and meetings all live
+--  inside a group; personal data (reads, bookmarks, highlights) stays per-user.
+--  "Group admins" manage their own group only — separate from site admin.
+--  Safe to re-run.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+create table if not exists public.groups (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  code       text not null unique,
+  created_by uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.group_members (
+  group_id  uuid not null references public.groups (id) on delete cascade,
+  user_id   uuid not null references auth.users (id) on delete cascade,
+  role      text not null default 'member',  -- member | admin (group-level only)
+  joined_at timestamptz not null default now(),
+  primary key (group_id, user_id)
+);
+create index if not exists group_members_user_idx on public.group_members (user_id);
+
+-- SECURITY DEFINER helpers so policies can check membership without RLS recursion.
+create or replace function public.is_group_member(gid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.group_members where group_id = gid and user_id = auth.uid()
+  );
+$$;
+
+create or replace function public.is_group_admin(gid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.group_members
+    where group_id = gid and user_id = auth.uid() and role = 'admin'
+  );
+$$;
+
+-- Add the group_id link to all group-scoped content.
+alter table public.studies  add column if not exists group_id uuid references public.groups (id) on delete cascade;
+alter table public.lessons  add column if not exists group_id uuid references public.groups (id) on delete cascade;
+alter table public.threads  add column if not exists group_id uuid references public.groups (id) on delete cascade;
+alter table public.posts    add column if not exists group_id uuid references public.groups (id) on delete cascade;
+alter table public.notes    add column if not exists group_id uuid references public.groups (id) on delete cascade;
+alter table public.meetings add column if not exists group_id uuid references public.groups (id) on delete cascade;
+
+create index if not exists studies_group_idx  on public.studies  (group_id, position);
+create index if not exists threads_group_idx  on public.threads  (group_id, created_at desc);
+create index if not exists notes_group_idx    on public.notes    (group_id);
+create index if not exists meetings_group_idx on public.meetings (group_id);
+
+-- A passage thread is now unique per group (each group has its own discussion).
+do $$ begin
+  alter table public.threads drop constraint if exists threads_ref_key;
+exception when undefined_object then null; end $$;
+do $$ begin
+  alter table public.threads add constraint threads_group_ref_key unique (group_id, ref);
+exception when duplicate_table then null; when duplicate_object then null; end $$;
+
+-- ───────────────────────── Group RPCs (all SECURITY DEFINER) ─────────────────────────
+-- Create a group (max 5 per user), become its admin, return the new row.
+create or replace function public.create_group(p_name text)
+returns setof public.groups
+language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  new_code text;
+  gid uuid;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if length(coalesce(trim(p_name), '')) = 0 then raise exception 'name required'; end if;
+  if (select count(*) from public.groups where created_by = uid) >= 5 then
+    raise exception 'group limit reached' using errcode = 'P0001';
+  end if;
+
+  loop
+    new_code := upper(substr(replace(encode(extensions.gen_random_bytes(6), 'hex'), '/', ''), 1, 8));
+    exit when not exists (select 1 from public.groups where code = new_code);
+  end loop;
+
+  insert into public.groups (name, code, created_by)
+    values (trim(p_name), new_code, uid)
+    returning id into gid;
+  insert into public.group_members (group_id, user_id, role) values (gid, uid, 'admin');
+
+  return query select * from public.groups where id = gid;
+end $$;
+
+-- Preview a group by code without joining (so a user can confirm before joining).
+create or replace function public.lookup_group(p_code text)
+returns table (id uuid, name text, member_count bigint)
+language sql stable security definer set search_path = public as $$
+  select g.id, g.name, (select count(*) from public.group_members m where m.group_id = g.id)
+  from public.groups g
+  where upper(g.code) = upper(trim(p_code))
+  limit 1;
+$$;
+
+-- Join a group by code (idempotent), return the group.
+create or replace function public.join_group(p_code text)
+returns setof public.groups
+language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  gid uuid;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  select id into gid from public.groups where upper(code) = upper(trim(p_code)) limit 1;
+  if gid is null then raise exception 'no such group' using errcode = 'P0002'; end if;
+  insert into public.group_members (group_id, user_id, role)
+    values (gid, uid, 'member') on conflict do nothing;
+  return query select * from public.groups where id = gid;
+end $$;
+
+create or replace function public.rename_group(p_group uuid, p_name text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_group_admin(p_group) then raise exception 'group admins only' using errcode = '42501'; end if;
+  if length(coalesce(trim(p_name), '')) = 0 then raise exception 'name required'; end if;
+  update public.groups set name = trim(p_name) where id = p_group;
+end $$;
+
+create or replace function public.delete_group(p_group uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_group_admin(p_group) then raise exception 'group admins only' using errcode = '42501'; end if;
+  delete from public.groups where id = p_group;
+end $$;
+
+create or replace function public.set_group_member_role(p_group uuid, p_user uuid, p_role text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_group_admin(p_group) then raise exception 'group admins only' using errcode = '42501'; end if;
+  if p_role not in ('member', 'admin') then raise exception 'bad role'; end if;
+  update public.group_members set role = p_role where group_id = p_group and user_id = p_user;
+end $$;
+
+create or replace function public.remove_group_member(p_group uuid, p_user uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid();
+begin
+  -- Group admins may kick anyone; any member may remove themselves (leave).
+  if not (public.is_group_admin(p_group) or p_user = uid) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  delete from public.group_members where group_id = p_group and user_id = p_user;
+end $$;
+
+grant execute on function public.create_group(text)               to authenticated;
+grant execute on function public.lookup_group(text)               to authenticated;
+grant execute on function public.join_group(text)                 to authenticated;
+grant execute on function public.rename_group(uuid, text)         to authenticated;
+grant execute on function public.delete_group(uuid)               to authenticated;
+grant execute on function public.set_group_member_role(uuid, uuid, text) to authenticated;
+grant execute on function public.remove_group_member(uuid, uuid)  to authenticated;
+
+-- ───────────────────────── Group RLS ─────────────────────────
+alter table public.groups        enable row level security;
+alter table public.group_members enable row level security;
+
+drop policy if exists groups_read on public.groups;
+create policy groups_read on public.groups for select using (public.is_group_member(id));
+-- (insert/update/delete on groups go through the SECURITY DEFINER RPCs above.)
+
+drop policy if exists group_members_read on public.group_members;
+create policy group_members_read on public.group_members
+  for select using (public.is_group_member(group_id));
+
+-- ───────────────────────── Re-scope content policies to groups ─────────────────────────
+drop policy if exists studies_read on public.studies;
+drop policy if exists studies_write on public.studies;
+create policy studies_read  on public.studies for select using (public.is_group_member(group_id));
+create policy studies_write on public.studies for all
+  using (public.is_group_admin(group_id)) with check (public.is_group_admin(group_id));
+
+drop policy if exists lessons_read on public.lessons;
+drop policy if exists lessons_write on public.lessons;
+create policy lessons_read  on public.lessons for select using (public.is_group_member(group_id));
+create policy lessons_write on public.lessons for all
+  using (public.is_group_admin(group_id)) with check (public.is_group_admin(group_id));
+
+drop policy if exists threads_read on public.threads;
+drop policy if exists threads_insert on public.threads;
+drop policy if exists threads_modify on public.threads;
+drop policy if exists threads_delete on public.threads;
+create policy threads_read on public.threads for select using (public.is_group_member(group_id));
+create policy threads_insert on public.threads
+  for insert with check (public.is_group_member(group_id) and created_by = auth.uid());
+create policy threads_modify on public.threads
+  for update using (created_by = auth.uid() or public.is_group_admin(group_id))
+  with check (created_by = auth.uid() or public.is_group_admin(group_id));
+create policy threads_delete on public.threads
+  for delete using (created_by = auth.uid() or public.is_group_admin(group_id));
+
+drop policy if exists posts_read on public.posts;
+drop policy if exists posts_insert on public.posts;
+drop policy if exists posts_modify on public.posts;
+drop policy if exists posts_delete on public.posts;
+create policy posts_read on public.posts for select using (public.is_group_member(group_id));
+create policy posts_insert on public.posts
+  for insert with check (public.is_group_member(group_id) and author = auth.uid());
+create policy posts_modify on public.posts
+  for update using (author = auth.uid() or public.is_group_admin(group_id))
+  with check (author = auth.uid() or public.is_group_admin(group_id));
+create policy posts_delete on public.posts
+  for delete using (author = auth.uid() or public.is_group_admin(group_id));
+
+drop policy if exists notes_read on public.notes;
+drop policy if exists notes_insert on public.notes;
+drop policy if exists notes_modify on public.notes;
+drop policy if exists notes_delete on public.notes;
+create policy notes_read on public.notes
+  for select using (public.is_group_member(group_id) and (visibility = 'group' or author = auth.uid()));
+create policy notes_insert on public.notes
+  for insert with check (public.is_group_member(group_id) and author = auth.uid());
+create policy notes_modify on public.notes
+  for update using (author = auth.uid() or public.is_group_admin(group_id))
+  with check (author = auth.uid() or public.is_group_admin(group_id));
+create policy notes_delete on public.notes
+  for delete using (author = auth.uid() or public.is_group_admin(group_id));
+
+drop policy if exists reactions_read on public.post_reactions;
+drop policy if exists reactions_own on public.post_reactions;
+create policy reactions_read on public.post_reactions for select using (
+  exists (select 1 from public.posts p where p.id = post_id and public.is_group_member(p.group_id))
+);
+create policy reactions_own on public.post_reactions for all
+  using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and exists (select 1 from public.posts p where p.id = post_id and public.is_group_member(p.group_id))
+  );
+
+drop policy if exists meetings_read on public.meetings;
+drop policy if exists meetings_write on public.meetings;
+create policy meetings_read  on public.meetings for select using (public.is_group_member(group_id));
+create policy meetings_write on public.meetings for all
+  using (public.is_group_admin(group_id)) with check (public.is_group_admin(group_id));
+
+drop policy if exists rsvps_read on public.meeting_rsvps;
+drop policy if exists rsvps_own on public.meeting_rsvps;
+create policy rsvps_read on public.meeting_rsvps for select using (
+  exists (select 1 from public.meetings m where m.id = meeting_id and public.is_group_member(m.group_id))
+);
+create policy rsvps_own on public.meeting_rsvps for all
+  using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and exists (select 1 from public.meetings m where m.id = meeting_id and public.is_group_member(m.group_id))
+  );
+
+-- ───────────────────────── Migrate existing shared content into one group ─────────────────────────
+-- One-time: if there are members but no groups yet, fold all current content into
+-- a single "Bible Study" group so nothing is lost, and add everyone to it.
+do $$
+declare gid uuid; owner_id uuid;
+begin
+  if not exists (select 1 from public.groups)
+     and exists (select 1 from public.profiles) then
+    select id into owner_id from public.profiles where role = 'admin' order by created_at limit 1;
+    if owner_id is null then select id into owner_id from public.profiles order by created_at limit 1; end if;
+
+    insert into public.groups (name, code, created_by)
+      values ('Bible Study', upper(substr(replace(encode(extensions.gen_random_bytes(6), 'hex'), '/', ''), 1, 8)), owner_id)
+      returning id into gid;
+
+    insert into public.group_members (group_id, user_id, role)
+      select gid, id, case when role = 'admin' then 'admin' else 'member' end from public.profiles
+      on conflict do nothing;
+
+    update public.studies  set group_id = gid where group_id is null;
+    update public.lessons  set group_id = gid where group_id is null;
+    update public.threads  set group_id = gid where group_id is null;
+    update public.posts    set group_id = gid where group_id is null;
+    update public.notes    set group_id = gid where group_id is null;
+    update public.meetings set group_id = gid where group_id is null;
+  end if;
+end $$;
+
+-- Realtime for group tables.
+do $$ begin alter publication supabase_realtime add table public.groups; exception when duplicate_object then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.group_members; exception when duplicate_object then null; end $$;
+
 -- ───────────────────────── Bootstrap the first admin ─────────────────────────
 -- The group signs in with a USERNAME + password. Internally a username maps to
 -- "<username>@biblestudy.app". IMPORTANT: in the Supabase dashboard under

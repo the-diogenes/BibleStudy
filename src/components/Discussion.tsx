@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useGroups } from "../context/GroupContext";
 import { supabase } from "../lib/supabase";
 import {
   addPost,
@@ -19,6 +20,7 @@ import Spinner from "./Spinner";
 
 export default function Discussion({ passage }: { passage: PassageRef }) {
   const { profile, status } = useAuth();
+  const { activeGroupId } = useGroups();
   const ref = refKey(passage);
   const [thread, setThread] = useState<Thread | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -30,13 +32,17 @@ export default function Discussion({ passage }: { passage: PassageRef }) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
+    if (!activeGroupId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const [t, m] = await Promise.all([getThreadByRef(ref), getMembersMap()]);
+    const [t, m] = await Promise.all([getThreadByRef(activeGroupId, ref), getMembersMap()]);
     setMembers(m);
     setThread(t);
     setPosts(t ? await listPosts(t.id) : []);
     setLoading(false);
-  }, [ref]);
+  }, [ref, activeGroupId]);
 
   useEffect(() => {
     if (status === "member") void load();
@@ -80,12 +86,12 @@ export default function Discussion({ passage }: { passage: PassageRef }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!profile || !body.trim()) return;
+    if (!profile || !body.trim() || !activeGroupId) return;
     setBusy(true);
     try {
-      const t = thread ?? (await ensureThread(passage, profile.id));
+      const t = thread ?? (await ensureThread(activeGroupId, passage, profile.id));
       if (!thread) setThread(t);
-      await addPost(t.id, profile.id, body.trim(), replyTo);
+      await addPost(t.group_id, t.id, profile.id, body.trim(), replyTo);
       setBody("");
       setReplyTo(null);
       setPosts(await listPosts(t.id));

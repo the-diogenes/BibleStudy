@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useGroups } from "../context/GroupContext";
 import { getRsvps, nextMeeting, setRsvp, type RsvpSummary } from "../lib/db";
 import type { Meeting, RsvpStatus } from "../types";
 
@@ -20,12 +21,17 @@ function formatWhen(iso: string | null): string {
 
 export default function MeetingCard() {
   const { profile } = useAuth();
+  const { activeGroupId } = useGroups();
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [rsvp, setRsvpSummary] = useState<RsvpSummary | null>(null);
 
   useEffect(() => {
+    if (!activeGroupId) {
+      setMeeting(null);
+      return;
+    }
     let active = true;
-    nextMeeting()
+    nextMeeting(activeGroupId)
       .then(async (m) => {
         if (!active) return;
         setMeeting(m);
@@ -35,7 +41,7 @@ export default function MeetingCard() {
     return () => {
       active = false;
     };
-  }, [profile]);
+  }, [profile, activeGroupId]);
 
   if (!meeting) return null;
 

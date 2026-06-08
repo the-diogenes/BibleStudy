@@ -8,8 +8,30 @@ export interface Profile {
   created_at: string;
 }
 
+export interface Group {
+  id: string;
+  name: string;
+  code: string;
+  created_by: string;
+  created_at: string;
+}
+
+export type GroupRole = "admin" | "member";
+
+export interface GroupMembership {
+  group: Group;
+  role: GroupRole;
+}
+
+export interface GroupMember {
+  user_id: string;
+  role: GroupRole;
+  name: string;
+}
+
 export interface Study {
   id: string;
+  group_id: string;
   title: string;
   description: string | null;
   position: number;
@@ -20,6 +42,7 @@ export type LessonStatus = "upcoming" | "active" | "done";
 
 export interface Lesson {
   id: string;
+  group_id: string;
   study_id: string;
   title: string;
   book: string;
@@ -42,6 +65,7 @@ export interface LessonProgress {
 
 export interface Thread {
   id: string;
+  group_id: string;
   ref: string;
   book: string;
   chapter: number;
@@ -54,6 +78,7 @@ export interface Thread {
 
 export interface Post {
   id: string;
+  group_id: string;
   thread_id: string;
   parent_id: string | null;
   author: string;
@@ -65,6 +90,7 @@ export interface Post {
 
 export interface Meeting {
   id: string;
+  group_id: string;
   title: string;
   starts_at: string | null;
   location: string | null;
@@ -130,6 +156,7 @@ export type NoteVisibility = "private" | "group";
 
 export interface Note {
   id: string;
+  group_id: string;
   ref: string;
   book: string;
   chapter: number;

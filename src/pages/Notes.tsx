@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useGroups } from "../context/GroupContext";
 import { getBooks, type BookSummary } from "../lib/bibleApi";
 import { getMembersMap, listGroupNotes, listMyNotes } from "../lib/db";
 import { labelFromKey } from "../lib/refs";
@@ -13,6 +14,7 @@ type Scope = "mine" | "group";
 
 export default function Notes() {
   const { status, profile } = useAuth();
+  const { activeGroupId } = useGroups();
   const { translation } = useSettings();
   const [scope, setScope] = useState<Scope>("mine");
   const [notes, setNotes] = useState<Note[]>([]);
@@ -26,12 +28,15 @@ export default function Notes() {
   }, [translation]);
 
   useEffect(() => {
-    if (status !== "member" || !profile) {
+    if (status !== "member" || !profile || !activeGroupId) {
       setLoading(false);
       return;
     }
     setLoading(true);
-    const fetcher = scope === "mine" ? listMyNotes(profile.id) : listGroupNotes();
+    const fetcher =
+      scope === "mine"
+        ? listMyNotes(activeGroupId, profile.id)
+        : listGroupNotes(activeGroupId);
     Promise.all([fetcher, getMembersMap()])
       .then(([n, m]) => {
         setNotes(n);
@@ -39,7 +44,7 @@ export default function Notes() {
       })
       .catch(() => setNotes([]))
       .finally(() => setLoading(false));
-  }, [status, profile, scope]);
+  }, [status, profile, scope, activeGroupId]);
 
   function pathFor(n: Note): string {
     return n.verse_start

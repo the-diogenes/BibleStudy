@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useGroups } from "../context/GroupContext";
 import { getBooks, type BookSummary } from "../lib/bibleApi";
 import { recentThreads } from "../lib/db";
 import { labelFromKey } from "../lib/refs";
@@ -12,6 +13,7 @@ import { ChevronRight } from "../components/icons";
 
 export default function Threads() {
   const { status } = useAuth();
+  const { activeGroupId } = useGroups();
   const { translation } = useSettings();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [books, setBooks] = useState<BookSummary[]>([]);
@@ -23,15 +25,16 @@ export default function Threads() {
   }, [translation]);
 
   useEffect(() => {
-    if (status !== "member") {
+    if (status !== "member" || !activeGroupId) {
       setLoading(false);
       return;
     }
-    recentThreads()
+    setLoading(true);
+    recentThreads(activeGroupId)
       .then(setThreads)
       .catch(() => setThreads([]))
       .finally(() => setLoading(false));
-  }, [status]);
+  }, [status, activeGroupId]);
 
   function pathForThread(t: Thread): string {
     return t.verse_start

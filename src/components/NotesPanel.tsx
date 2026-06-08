@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useGroups } from "../context/GroupContext";
 import { supabase } from "../lib/supabase";
 import { addNote, deleteNote, getMembersMap, listNotesForRef } from "../lib/db";
 import { refKey, type PassageRef } from "../lib/refs";
@@ -9,6 +10,7 @@ import Spinner from "./Spinner";
 
 export default function NotesPanel({ passage }: { passage: PassageRef }) {
   const { profile, status } = useAuth();
+  const { activeGroupId } = useGroups();
   const ref = refKey(passage);
   const [notes, setNotes] = useState<Note[]>([]);
   const [members, setMembers] = useState<Map<string, string>>(new Map());
@@ -18,12 +20,16 @@ export default function NotesPanel({ passage }: { passage: PassageRef }) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
+    if (!activeGroupId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const [n, m] = await Promise.all([listNotesForRef(ref), getMembersMap()]);
+    const [n, m] = await Promise.all([listNotesForRef(activeGroupId, ref), getMembersMap()]);
     setNotes(n);
     setMembers(m);
     setLoading(false);
-  }, [ref]);
+  }, [ref, activeGroupId]);
 
   useEffect(() => {
     if (status === "member") void load();
@@ -32,26 +38,26 @@ export default function NotesPanel({ passage }: { passage: PassageRef }) {
 
   useEffect(() => {
     const client = supabase;
-    if (!client) return;
+    if (!client || !activeGroupId) return;
     const channel = client
-      .channel(`notes:${ref}`)
+      .channel(`notes:${activeGroupId}:${ref}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notes", filter: `ref=eq.${ref}` },
-        () => listNotesForRef(ref).then(setNotes).catch(() => {})
+        () => listNotesForRef(activeGroupId, ref).then(setNotes).catch(() => {})
       )
       .subscribe();
     return () => {
       void client.removeChannel(channel);
     };
-  }, [ref]);
+  }, [ref, activeGroupId]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!profile || !body.trim()) return;
+    if (!profile || !body.trim() || !activeGroupId) return;
     setBusy(true);
     try {
-      await addNote(passage, profile.id, body.trim(), visibility);
+      await addNote(activeGroupId, passage, profile.id, body.trim(), visibility);
       setBody("");
       await load();
     } finally {

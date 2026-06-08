@@ -3,6 +3,10 @@ import type {
   Bookmark,
   FeedbackMessage,
   FeedbackThread,
+  Group,
+  GroupMember,
+  GroupMembership,
+  GroupRole,
   Highlight,
   Lesson,
   LessonProgress,
@@ -19,6 +23,92 @@ import type {
 import type { PassageRef } from "./refs";
 import { refKey } from "./refs";
 
+// ───────────────────────── Groups ─────────────────────────
+export async function listMyGroups(userId: string): Promise<GroupMembership[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("role, groups(*)")
+    .eq("user_id", userId);
+  if (error) throw error;
+  // Supabase types the embedded relation loosely; normalize to a single Group.
+  const rows = (data as unknown as { role: GroupRole; groups: Group | Group[] | null }[]) || [];
+  return rows
+    .map((r) => ({ role: r.role, group: Array.isArray(r.groups) ? r.groups[0] : r.groups }))
+    .filter((r): r is GroupMembership => Boolean(r.group))
+    .sort((a, b) => a.group.name.localeCompare(b.group.name));
+}
+
+export async function createGroup(name: string): Promise<Group> {
+  const sb = requireSupabase();
+  const { data, error } = await sb.rpc("create_group", { p_name: name }).single();
+  if (error) throw error;
+  return data as Group;
+}
+
+export async function lookupGroup(
+  code: string
+): Promise<{ id: string; name: string; member_count: number } | null> {
+  const sb = requireSupabase();
+  const { data, error } = await sb.rpc("lookup_group", { p_code: code });
+  if (error) throw error;
+  const row = ((data as { id: string; name: string; member_count: number }[]) || [])[0];
+  return row || null;
+}
+
+export async function joinGroup(code: string): Promise<Group> {
+  const sb = requireSupabase();
+  const { data, error } = await sb.rpc("join_group", { p_code: code }).single();
+  if (error) throw error;
+  return data as Group;
+}
+
+export async function renameGroup(groupId: string, name: string): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.rpc("rename_group", { p_group: groupId, p_name: name });
+  if (error) throw error;
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.rpc("delete_group", { p_group: groupId });
+  if (error) throw error;
+}
+
+export async function setGroupMemberRole(
+  groupId: string,
+  userId: string,
+  role: GroupRole
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.rpc("set_group_member_role", {
+    p_group: groupId,
+    p_user: userId,
+    p_role: role,
+  });
+  if (error) throw error;
+}
+
+export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.rpc("remove_group_member", { p_group: groupId, p_user: userId });
+  if (error) throw error;
+}
+
+export async function listGroupMembers(groupId: string): Promise<GroupMember[]> {
+  const sb = requireSupabase();
+  const [{ data: rows, error }, names] = await Promise.all([
+    sb.from("group_members").select("user_id, role").eq("group_id", groupId),
+    getMembersMap(),
+  ]);
+  if (error) throw error;
+  return ((rows as { user_id: string; role: GroupRole }[]) || []).map((r) => ({
+    user_id: r.user_id,
+    role: r.role,
+    name: names.get(r.user_id) || "Member",
+  }));
+}
+
 // ───────────────────────── Members ─────────────────────────
 export async function getMembersMap(): Promise<Map<string, string>> {
   const map = new Map<string, string>();
@@ -31,20 +121,31 @@ export async function getMembersMap(): Promise<Map<string, string>> {
 }
 
 // ───────────────────────── Threads & posts ─────────────────────────
-export async function getThreadByRef(ref: string): Promise<Thread | null> {
+export async function getThreadByRef(groupId: string, ref: string): Promise<Thread | null> {
   const sb = requireSupabase();
-  const { data } = await sb.from("threads").select("*").eq("ref", ref).maybeSingle();
+  const { data } = await sb
+    .from("threads")
+    .select("*")
+    .eq("group_id", groupId)
+    .eq("ref", ref)
+    .maybeSingle();
   return (data as Thread) || null;
 }
 
-export async function ensureThread(r: PassageRef, userId: string, title?: string): Promise<Thread> {
+export async function ensureThread(
+  groupId: string,
+  r: PassageRef,
+  userId: string,
+  title?: string
+): Promise<Thread> {
   const sb = requireSupabase();
   const ref = refKey(r);
-  const existing = await getThreadByRef(ref);
+  const existing = await getThreadByRef(groupId, ref);
   if (existing) return existing;
   const { data, error } = await sb
     .from("threads")
     .insert({
+      group_id: groupId,
       ref,
       book: r.book,
       chapter: r.chapter,
@@ -57,7 +158,7 @@ export async function ensureThread(r: PassageRef, userId: string, title?: string
     .single();
   if (error) {
     // Possible race: another member created it first.
-    const again = await getThreadByRef(ref);
+    const again = await getThreadByRef(groupId, ref);
     if (again) return again;
     throw error;
   }
@@ -76,6 +177,7 @@ export async function listPosts(threadId: string): Promise<Post[]> {
 }
 
 export async function addPost(
+  groupId: string,
   threadId: string,
   author: string,
   body: string,
@@ -84,7 +186,7 @@ export async function addPost(
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("posts")
-    .insert({ thread_id: threadId, author, body, parent_id: parentId })
+    .insert({ group_id: groupId, thread_id: threadId, author, body, parent_id: parentId })
     .select("*")
     .single();
   if (error) throw error;
@@ -144,11 +246,12 @@ export async function toggleReaction(
   }
 }
 
-export async function recentThreads(limit = 30): Promise<Thread[]> {
+export async function recentThreads(groupId: string, limit = 30): Promise<Thread[]> {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("threads")
     .select("*")
+    .eq("group_id", groupId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -156,11 +259,12 @@ export async function recentThreads(limit = 30): Promise<Thread[]> {
 }
 
 // ───────────────────────── Notes ─────────────────────────
-export async function listNotesForRef(ref: string): Promise<Note[]> {
+export async function listNotesForRef(groupId: string, ref: string): Promise<Note[]> {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("notes")
     .select("*")
+    .eq("group_id", groupId)
     .eq("ref", ref)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -168,6 +272,7 @@ export async function listNotesForRef(ref: string): Promise<Note[]> {
 }
 
 export async function addNote(
+  groupId: string,
   r: PassageRef,
   author: string,
   body: string,
@@ -177,6 +282,7 @@ export async function addNote(
   const { data, error } = await sb
     .from("notes")
     .insert({
+      group_id: groupId,
       ref: refKey(r),
       book: r.book,
       chapter: r.chapter,
@@ -198,22 +304,24 @@ export async function deleteNote(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function listMyNotes(authorId: string): Promise<Note[]> {
+export async function listMyNotes(groupId: string, authorId: string): Promise<Note[]> {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("notes")
     .select("*")
+    .eq("group_id", groupId)
     .eq("author", authorId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data as Note[]) || [];
 }
 
-export async function listGroupNotes(limit = 50): Promise<Note[]> {
+export async function listGroupNotes(groupId: string, limit = 50): Promise<Note[]> {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("notes")
     .select("*")
+    .eq("group_id", groupId)
     .eq("visibility", "group")
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -222,9 +330,13 @@ export async function listGroupNotes(limit = 50): Promise<Note[]> {
 }
 
 // ───────────────────────── Curriculum ─────────────────────────
-export async function listStudies(): Promise<Study[]> {
+export async function listStudies(groupId: string): Promise<Study[]> {
   const sb = requireSupabase();
-  const { data, error } = await sb.from("studies").select("*").order("position");
+  const { data, error } = await sb
+    .from("studies")
+    .select("*")
+    .eq("group_id", groupId)
+    .order("position");
   if (error) throw error;
   return (data as Study[]) || [];
 }
@@ -266,11 +378,15 @@ export async function setProgress(
 }
 
 // Admin writes
-export async function createStudy(title: string, description: string): Promise<Study> {
+export async function createStudy(
+  groupId: string,
+  title: string,
+  description: string
+): Promise<Study> {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("studies")
-    .insert({ title, description })
+    .insert({ group_id: groupId, title, description })
     .select("*")
     .single();
   if (error) throw error;
@@ -365,12 +481,13 @@ export async function adminSetPassword(target: string, newPassword: string): Pro
 }
 
 // ───────────────────────── Meetings & RSVPs ─────────────────────────
-export async function nextMeeting(): Promise<Meeting | null> {
+export async function nextMeeting(groupId: string): Promise<Meeting | null> {
   const sb = requireSupabase();
   const nowIso = new Date().toISOString();
   const { data } = await sb
     .from("meetings")
     .select("*")
+    .eq("group_id", groupId)
     .gte("starts_at", nowIso)
     .order("starts_at", { ascending: true })
     .limit(1);
@@ -380,16 +497,18 @@ export async function nextMeeting(): Promise<Meeting | null> {
   const { data: recent } = await sb
     .from("meetings")
     .select("*")
+    .eq("group_id", groupId)
     .order("created_at", { ascending: false })
     .limit(1);
   return ((recent as Meeting[]) || [])[0] || null;
 }
 
-export async function listMeetings(): Promise<Meeting[]> {
+export async function listMeetings(groupId: string): Promise<Meeting[]> {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("meetings")
     .select("*")
+    .eq("group_id", groupId)
     .order("starts_at", { ascending: false, nullsFirst: false });
   if (error) throw error;
   return (data as Meeting[]) || [];
