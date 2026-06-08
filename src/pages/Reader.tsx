@@ -16,14 +16,23 @@ import {
 } from "../lib/interlinear";
 import { useSettings } from "../context/SettingsContext";
 import { useAuth } from "../context/AuthContext";
-import { clearHighlight, getChapterHighlights, setHighlight } from "../lib/db";
+import {
+  addBookmark,
+  clearHighlight,
+  deleteBookmark,
+  getChapterBookmarks,
+  getChapterHighlights,
+  markChapterRead,
+  setHighlight,
+} from "../lib/db";
 import { HIGHLIGHT_TINT, type HighlightColor } from "../lib/highlight";
+import type { Bookmark } from "../types";
 import TranslationPicker from "../components/TranslationPicker";
 import WordPopover from "../components/WordPopover";
 import ShareButton from "../components/ShareButton";
 import VerseActionsSheet from "../components/VerseActionsSheet";
 import Spinner from "../components/Spinner";
-import { ArrowLeft } from "../components/icons";
+import { ArrowLeft, BookmarkFilledIcon, BookmarkIcon } from "../components/icons";
 
 export default function Reader() {
   const { book = "", chapter = "1" } = useParams();
@@ -41,6 +50,7 @@ export default function Reader() {
   const [error, setError] = useState<string | null>(null);
   const [popover, setPopover] = useState<InterlinearWord | null>(null);
   const [highlights, setHighlights] = useState<Map<number, string>>(new Map());
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const [glowVerse, setGlowVerse] = useState<number | null>(null);
 
@@ -88,6 +98,27 @@ export default function Reader() {
     };
   }, [profile, book, chapterNum]);
 
+  useEffect(() => {
+    if (!profile) {
+      setBookmarks([]);
+      return;
+    }
+    let active = true;
+    getChapterBookmarks(profile.id, book, chapterNum)
+      .then((b) => active && setBookmarks(b))
+      .catch(() => active && setBookmarks([]));
+    return () => {
+      active = false;
+    };
+  }, [profile, book, chapterNum]);
+
+  // Record the chapter as read once it loads successfully.
+  useEffect(() => {
+    if (profile && data) {
+      void markChapterRead(profile.id, book, chapterNum);
+    }
+  }, [profile, data, book, chapterNum]);
+
   // Deep links like /read/JHN/3#v16 scroll to and briefly glow the verse.
   useEffect(() => {
     if (!data) return;
@@ -126,6 +157,31 @@ export default function Reader() {
 
   const currentBook = useMemo(() => books.find((b) => b.id === book), [books, book]);
   const bookName = currentBook?.commonName || book;
+
+  const pageBookmark = useMemo(
+    () => bookmarks.find((b) => b.verse == null) || null,
+    [bookmarks]
+  );
+
+  async function toggleBookmark(verse: number | null, label: string) {
+    if (!profile) return;
+    const existing = bookmarks.find((b) => (b.verse ?? null) === verse);
+    if (existing) {
+      setBookmarks((bs) => bs.filter((b) => b.id !== existing.id));
+      try {
+        await deleteBookmark(existing.id);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      try {
+        const created = await addBookmark(profile.id, book, chapterNum, verse, label);
+        setBookmarks((bs) => [created, ...bs]);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 
   const { prev, next } = useMemo(() => {
     if (!currentBook) return { prev: null as string | null, next: null as string | null };
@@ -169,6 +225,20 @@ export default function Reader() {
             />
             Interlinear
           </label>
+          <button
+            type="button"
+            onClick={() => toggleBookmark(null, `${bookName} ${chapterNum}`)}
+            aria-label={pageBookmark ? "Remove bookmark" : "Bookmark this chapter"}
+            className={`rounded-md p-1.5 hover:bg-stone-100 ${
+              pageBookmark ? "text-amber-500" : "text-stone-500 hover:text-ink"
+            }`}
+          >
+            {pageBookmark ? (
+              <BookmarkFilledIcon className="h-5 w-5" />
+            ) : (
+              <BookmarkIcon className="h-5 w-5" />
+            )}
+          </button>
           <ShareButton
             compact
             routePath={`read/${book}/${chapterNum}`}
@@ -281,8 +351,13 @@ export default function Reader() {
             data.content.find((c) => c.type === "verse" && c.number === selectedVerse)?.content
           )}
           currentColor={highlights.get(selectedVerse) || null}
+          bookmarked={bookmarks.some((b) => b.verse === selectedVerse)}
           onColor={(color) => {
             void applyColor(selectedVerse, color);
+            setSelectedVerse(null);
+          }}
+          onBookmark={() => {
+            void toggleBookmark(selectedVerse, `${bookName} ${chapterNum}:${selectedVerse}`);
             setSelectedVerse(null);
           }}
           onClose={() => setSelectedVerse(null)}

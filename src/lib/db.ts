@@ -1,5 +1,6 @@
 import { requireSupabase, supabase } from "./supabase";
 import type {
+  Bookmark,
   FeedbackMessage,
   FeedbackThread,
   Highlight,
@@ -472,6 +473,98 @@ export async function clearHighlight(
     .eq("chapter", chapter)
     .eq("verse", verse);
   if (error) throw error;
+}
+
+// ───────────────────────── Bookmarks ─────────────────────────
+export async function listBookmarks(userId: string): Promise<Bookmark[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("bookmarks")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as Bookmark[]) || [];
+}
+
+export async function addBookmark(
+  userId: string,
+  book: string,
+  chapter: number,
+  verse: number | null,
+  label: string | null
+): Promise<Bookmark> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("bookmarks")
+    .insert({ user_id: userId, book, chapter, verse, label })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as Bookmark;
+}
+
+export async function getChapterBookmarks(
+  userId: string,
+  book: string,
+  chapter: number
+): Promise<Bookmark[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("bookmarks")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("book", book)
+    .eq("chapter", chapter);
+  return (data as Bookmark[]) || [];
+}
+
+export async function deleteBookmark(id: string): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("bookmarks").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ───────────────────────── Reading progress ─────────────────────────
+export async function markChapterRead(
+  userId: string,
+  book: string,
+  chapter: number
+): Promise<void> {
+  if (!supabase) return;
+  await supabase
+    .from("reads")
+    .upsert(
+      { user_id: userId, book, chapter, read_at: new Date().toISOString() },
+      { onConflict: "user_id,book,chapter" }
+    );
+}
+
+export async function unmarkChapterRead(
+  userId: string,
+  book: string,
+  chapter: number
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("reads")
+    .delete()
+    .eq("user_id", userId)
+    .eq("book", book)
+    .eq("chapter", chapter);
+  if (error) throw error;
+}
+
+export async function getBookReads(userId: string, book: string): Promise<Set<number>> {
+  const set = new Set<number>();
+  if (!supabase) return set;
+  const { data } = await supabase
+    .from("reads")
+    .select("chapter")
+    .eq("user_id", userId)
+    .eq("book", book);
+  (data as { chapter: number }[] | null)?.forEach((r) => set.add(r.chapter));
+  return set;
 }
 
 // ───────────────────────── Feedback / contact inbox ─────────────────────────

@@ -116,6 +116,16 @@ export interface FeedbackMessage {
   created_at: string;
 }
 
+export interface Bookmark {
+  id: string;
+  user_id: string;
+  book: string;
+  chapter: number;
+  verse: number | null;
+  label: string | null;
+  created_at: string;
+}
+
 export type NoteVisibility = "private" | "group";
 
 export interface Note {

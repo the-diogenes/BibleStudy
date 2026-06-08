@@ -4,6 +4,7 @@ import { RequireAdmin, RequireMember } from "./components/guards";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import BibleBooks from "./pages/BibleBooks";
+import Bookmarks from "./pages/Bookmarks";
 import Reader from "./pages/Reader";
 import Passage from "./pages/Passage";
 import Threads from "./pages/Threads";
@@ -22,6 +23,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/bible" element={<BibleBooks />} />
+          <Route path="/bookmarks" element={<Bookmarks />} />
           <Route path="/read/:book/:chapter" element={<Reader />} />
           <Route path="/passage/:book/:chapter" element={<Passage />} />
           <Route path="/passage/:book/:chapter/:verse" element={<Passage />} />

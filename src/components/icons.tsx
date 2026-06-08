@@ -100,3 +100,24 @@ export const MailIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="m3 7 9 6 9-6" />
   </svg>
 );
+
+export const BookmarkIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
+  </svg>
+);
+
+export const BookmarkFilledIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base({ ...p, fill: "currentColor" })}>
+    <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
+  </svg>
+);
+
+export const TrashIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 7h16" />
+    <path d="M10 11v6M14 11v6" />
+    <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+    <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
+  </svg>
+);

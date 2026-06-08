@@ -13,7 +13,9 @@ interface Props {
   label: string;
   text: string;
   currentColor: string | null;
+  bookmarked: boolean;
   onColor: (color: HighlightColor | null) => void;
+  onBookmark: () => void;
   onClose: () => void;
 }
 
@@ -24,7 +26,9 @@ export default function VerseActionsSheet({
   label,
   text,
   currentColor,
+  bookmarked,
   onColor,
+  onBookmark,
   onClose,
 }: Props) {
   const url = absoluteUrl(`read/${book}/${chapter}#v${verse}`);
@@ -72,7 +76,10 @@ export default function VerseActionsSheet({
           </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2">
+        <div className="mt-5 grid grid-cols-3 gap-2">
+          <button onClick={onBookmark} className="btn-ghost">
+            {bookmarked ? "Bookmarked" : "Bookmark"}
+          </button>
           <button onClick={share} className="btn-ghost">
             Share
           </button>

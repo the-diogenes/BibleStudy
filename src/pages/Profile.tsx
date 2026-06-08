@@ -121,6 +121,9 @@ export default function Profile() {
       </div>
 
       <div className="flex flex-wrap gap-3">
+        <Link to="/bookmarks" className="btn-ghost">
+          Bookmarks
+        </Link>
         <Link to="/contact" className="btn-ghost">
           Contact &amp; feedback
         </Link>

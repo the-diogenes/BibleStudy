@@ -2,17 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getBooks, type BookSummary } from "../lib/bibleApi";
 import { useSettings } from "../context/SettingsContext";
+import { useAuth } from "../context/AuthContext";
+import { getBookReads } from "../lib/db";
 import { parseHumanRef } from "../lib/refs";
 import TranslationPicker from "../components/TranslationPicker";
 import Spinner from "../components/Spinner";
+import { BookmarkIcon } from "../components/icons";
 
 export default function BibleBooks() {
   const { translation } = useSettings();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<BookSummary | null>(null);
+  const [reads, setReads] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState("");
   const [jumpError, setJumpError] = useState(false);
 
@@ -27,6 +32,20 @@ export default function BibleBooks() {
       active = false;
     };
   }, [translation]);
+
+  useEffect(() => {
+    if (!profile || !selected) {
+      setReads(new Set());
+      return;
+    }
+    let active = true;
+    getBookReads(profile.id, selected.id)
+      .then((s) => active && setReads(s))
+      .catch(() => active && setReads(new Set()));
+    return () => {
+      active = false;
+    };
+  }, [profile, selected]);
 
   const { ot, nt } = useMemo(() => {
     const ot = books.filter((b) => b.order <= 39);
@@ -59,17 +78,29 @@ export default function BibleBooks() {
         <button className="mb-3 text-sm text-stone-500" onClick={() => setSelected(null)}>
           &larr; All books
         </button>
-        <h2 className="mb-3 font-serif text-2xl font-semibold">{selected.commonName}</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-serif text-2xl font-semibold">{selected.commonName}</h2>
+          <span className="inline-flex items-center gap-1.5 text-xs text-stone-400">
+            <span className="h-3 w-3 rounded-sm bg-emerald-100 ring-1 ring-emerald-300" /> read
+          </span>
+        </div>
         <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
-          {Array.from({ length: selected.numberOfChapters }, (_, i) => i + 1).map((c) => (
-            <button
-              key={c}
-              className="card aspect-square text-sm font-medium hover:bg-stone-50"
-              onClick={() => navigate(`/read/${selected.id}/${c}`)}
-            >
-              {c}
-            </button>
-          ))}
+          {Array.from({ length: selected.numberOfChapters }, (_, i) => i + 1).map((c) => {
+            const isRead = reads.has(c);
+            return (
+              <button
+                key={c}
+                className={`aspect-square rounded-xl border text-sm font-medium shadow-sm transition ${
+                  isRead
+                    ? "border-emerald-200 bg-emerald-100 text-emerald-800 hover:brightness-95"
+                    : "card hover:bg-stone-50"
+                }`}
+                onClick={() => navigate(`/read/${selected.id}/${c}`)}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -97,13 +128,22 @@ export default function BibleBooks() {
           </p>
         )}
       </form>
-      <Link
-        to="/reference"
-        className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-ink"
-      >
-        <span className="font-serif text-lg">Αα · אב</span>
-        Greek &amp; Hebrew alphabet guide
-      </Link>
+      <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <Link
+          to="/bookmarks"
+          className="inline-flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-ink"
+        >
+          <BookmarkIcon className="h-4 w-4" />
+          Bookmarks
+        </Link>
+        <Link
+          to="/reference"
+          className="inline-flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-ink"
+        >
+          <span className="font-serif text-lg">Αα · אב</span>
+          Greek &amp; Hebrew alphabet guide
+        </Link>
+      </div>
       <BookGroup title="Old Testament" books={ot} onSelect={setSelected} />
       <BookGroup title="New Testament" books={nt} onSelect={setSelected} />
     </div>

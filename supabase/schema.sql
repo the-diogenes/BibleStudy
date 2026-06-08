@@ -483,6 +483,38 @@ create policy feedback_messages_insert on public.feedback_messages
     )
   );
 
+-- ───────────────────────── Bookmarks ─────────────────────────
+create table if not exists public.bookmarks (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  book       text not null,
+  chapter    int  not null,
+  verse      int,            -- null = a whole-chapter (page) bookmark
+  label      text,
+  created_at timestamptz not null default now()
+);
+create index if not exists bookmarks_user_idx on public.bookmarks (user_id, created_at desc);
+
+-- ───────────────────────── Reading progress (chapters read) ─────────────────────────
+create table if not exists public.reads (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  book    text not null,
+  chapter int  not null,
+  read_at timestamptz not null default now(),
+  primary key (user_id, book, chapter)
+);
+
+alter table public.bookmarks enable row level security;
+alter table public.reads     enable row level security;
+
+drop policy if exists bookmarks_own on public.bookmarks;
+create policy bookmarks_own on public.bookmarks
+  for all using (user_id = auth.uid()) with check (public.is_member() and user_id = auth.uid());
+
+drop policy if exists reads_own on public.reads;
+create policy reads_own on public.reads
+  for all using (user_id = auth.uid()) with check (public.is_member() and user_id = auth.uid());
+
 -- Realtime for the live bits.
 do $$ begin alter publication supabase_realtime add table public.feedback_messages; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.meetings; exception when duplicate_object then null; end $$;
