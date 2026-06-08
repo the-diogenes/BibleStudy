@@ -10,6 +10,7 @@ import Threads from "./pages/Threads";
 import Notes from "./pages/Notes";
 import Profile from "./pages/Profile";
 import About from "./pages/About";
+import Contact from "./pages/Contact";
 import Admin from "./pages/Admin";
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/notes" element={<Notes />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           <Route
             path="/admin"
             element={

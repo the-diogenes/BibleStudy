@@ -286,6 +286,208 @@ do $$ begin alter publication supabase_realtime add table public.posts; exceptio
 do $$ begin alter publication supabase_realtime add table public.notes; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.lessons; exception when duplicate_object then null; end $$;
 
+-- ═══════════════════════════════════════════════════════════════════════════
+--  Feature pack: usernames, role protection, admin password reset, meetings,
+--  RSVPs, verse highlights, and the contact/feedback inbox.
+--  Safe to re-run.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+create extension if not exists pgcrypto with schema extensions;
+
+-- Store the username on the profile (for the admin roster + display).
+alter table public.profiles add column if not exists username text;
+
+-- Backfill usernames from the auth email local-part where missing.
+update public.profiles p
+set username = split_part(u.email, '@', 1)
+from auth.users u
+where u.id = p.id and (p.username is null or p.username = '');
+
+-- Re-create ensure_profile so it also records the username on first login.
+create or replace function public.ensure_profile(p_display_name text default null)
+returns setof public.profiles
+language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  inv_role text;
+  uname text := split_part(coalesce(auth.jwt() ->> 'email', ''), '@', 1);
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  if exists (select 1 from public.profiles where id = uid) then
+    return query select * from public.profiles where id = uid;
+    return;
+  end if;
+
+  if not public.is_invited() then
+    raise exception 'not invited' using errcode = '42501';
+  end if;
+
+  select role into inv_role from public.member_invites
+    where lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')) limit 1;
+
+  return query
+  insert into public.profiles (id, display_name, role, username)
+  values (
+    uid,
+    coalesce(nullif(p_display_name, ''), uname),
+    coalesce(inv_role, 'member'),
+    uname
+  )
+  returning *;
+end $$;
+
+grant execute on function public.ensure_profile(text) to authenticated;
+
+-- Prevent members from promoting themselves: only admins may change a role.
+create or replace function public.protect_profile_role()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.role is distinct from old.role and not public.is_admin() then
+    new.role := old.role;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists profiles_protect_role on public.profiles;
+create trigger profiles_protect_role before update on public.profiles
+  for each row execute function public.protect_profile_role();
+
+-- Admin-only: set another member's password (no service key needed).
+create or replace function public.admin_set_password(target uuid, new_password text)
+returns void language plpgsql security definer set search_path = public, auth, extensions as $$
+begin
+  if not public.is_admin() then
+    raise exception 'admins only' using errcode = '42501';
+  end if;
+  if length(coalesce(new_password, '')) < 6 then
+    raise exception 'password too short';
+  end if;
+  update auth.users
+    set encrypted_password = extensions.crypt(new_password, extensions.gen_salt('bf')),
+        updated_at = now()
+  where id = target;
+end $$;
+
+grant execute on function public.admin_set_password(uuid, text) to authenticated;
+
+-- ───────────────────────── Meetings & RSVPs ─────────────────────────
+create table if not exists public.meetings (
+  id          uuid primary key default gen_random_uuid(),
+  title       text not null,
+  starts_at   timestamptz,
+  location    text,
+  book        text,
+  chapter     int,
+  verse_start int,
+  verse_end   int,
+  notes       text,
+  created_at  timestamptz not null default now()
+);
+create index if not exists meetings_starts_idx on public.meetings (starts_at);
+
+create table if not exists public.meeting_rsvps (
+  meeting_id uuid not null references public.meetings (id) on delete cascade,
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  status     text not null default 'yes',  -- yes | no | maybe
+  updated_at timestamptz not null default now(),
+  primary key (meeting_id, user_id)
+);
+
+-- ───────────────────────── Verse highlights ─────────────────────────
+create table if not exists public.highlights (
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  book       text not null,
+  chapter    int  not null,
+  verse      int  not null,
+  color      text not null default 'yellow',
+  created_at timestamptz not null default now(),
+  primary key (user_id, book, chapter, verse)
+);
+
+-- ───────────────────────── Contact / feedback inbox ─────────────────────────
+create table if not exists public.feedback_threads (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  subject    text not null,
+  status     text not null default 'open',  -- open | closed
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists feedback_threads_user_idx on public.feedback_threads (user_id, updated_at desc);
+
+create table if not exists public.feedback_messages (
+  id          uuid primary key default gen_random_uuid(),
+  thread_id   uuid not null references public.feedback_threads (id) on delete cascade,
+  author      uuid not null references auth.users (id) on delete cascade,
+  sender_role text not null default 'member',  -- member | admin
+  body        text not null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists feedback_messages_thread_idx on public.feedback_messages (thread_id, created_at);
+
+-- RLS
+alter table public.meetings         enable row level security;
+alter table public.meeting_rsvps    enable row level security;
+alter table public.highlights       enable row level security;
+alter table public.feedback_threads enable row level security;
+alter table public.feedback_messages enable row level security;
+
+drop policy if exists meetings_read on public.meetings;
+create policy meetings_read on public.meetings for select using (public.is_member());
+drop policy if exists meetings_write on public.meetings;
+create policy meetings_write on public.meetings
+  for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists rsvps_read on public.meeting_rsvps;
+create policy rsvps_read on public.meeting_rsvps for select using (public.is_member());
+drop policy if exists rsvps_own on public.meeting_rsvps;
+create policy rsvps_own on public.meeting_rsvps
+  for all using (user_id = auth.uid()) with check (public.is_member() and user_id = auth.uid());
+
+drop policy if exists highlights_own on public.highlights;
+create policy highlights_own on public.highlights
+  for all using (user_id = auth.uid()) with check (public.is_member() and user_id = auth.uid());
+
+-- feedback threads: a member sees only their own; admins see all.
+drop policy if exists feedback_threads_select on public.feedback_threads;
+create policy feedback_threads_select on public.feedback_threads
+  for select using (user_id = auth.uid() or public.is_admin());
+drop policy if exists feedback_threads_insert on public.feedback_threads;
+create policy feedback_threads_insert on public.feedback_threads
+  for insert with check (public.is_member() and user_id = auth.uid());
+drop policy if exists feedback_threads_update on public.feedback_threads;
+create policy feedback_threads_update on public.feedback_threads
+  for update using (user_id = auth.uid() or public.is_admin())
+  with check (user_id = auth.uid() or public.is_admin());
+
+-- feedback messages: visible to the thread owner and admins.
+drop policy if exists feedback_messages_select on public.feedback_messages;
+create policy feedback_messages_select on public.feedback_messages
+  for select using (
+    public.is_admin() or exists (
+      select 1 from public.feedback_threads t
+      where t.id = thread_id and t.user_id = auth.uid()
+    )
+  );
+drop policy if exists feedback_messages_insert on public.feedback_messages;
+create policy feedback_messages_insert on public.feedback_messages
+  for insert with check (
+    author = auth.uid() and (
+      public.is_admin() or exists (
+        select 1 from public.feedback_threads t
+        where t.id = thread_id and t.user_id = auth.uid()
+      )
+    )
+  );
+
+-- Realtime for the live bits.
+do $$ begin alter publication supabase_realtime add table public.feedback_messages; exception when duplicate_object then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.meetings; exception when duplicate_object then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.meeting_rsvps; exception when duplicate_object then null; end $$;
+
 -- ───────────────────────── Bootstrap the first admin ─────────────────────────
 -- The group signs in with a USERNAME + password. Internally a username maps to
 -- "<username>@biblestudy.app". IMPORTANT: in the Supabase dashboard under

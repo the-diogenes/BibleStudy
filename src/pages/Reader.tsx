@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   getBooks,
   getChapter,
@@ -9,9 +9,13 @@ import {
 } from "../lib/bibleApi";
 import { getChapterInterlinear, type ChapterInterlinear, type InterlinearWord } from "../lib/interlinear";
 import { useSettings } from "../context/SettingsContext";
+import { useAuth } from "../context/AuthContext";
+import { clearHighlight, getChapterHighlights, setHighlight } from "../lib/db";
+import { HIGHLIGHT_TINT, type HighlightColor } from "../lib/highlight";
 import TranslationPicker from "../components/TranslationPicker";
 import WordPopover from "../components/WordPopover";
 import ShareButton from "../components/ShareButton";
+import VerseActionsSheet from "../components/VerseActionsSheet";
 import Spinner from "../components/Spinner";
 import { ArrowLeft } from "../components/icons";
 
@@ -19,7 +23,9 @@ export default function Reader() {
   const { book = "", chapter = "1" } = useParams();
   const chapterNum = Number(chapter) || 1;
   const { translation, interlinear, setInterlinear } = useSettings();
+  const { profile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [data, setData] = useState<Chapter | null>(null);
@@ -27,6 +33,9 @@ export default function Reader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [popover, setPopover] = useState<InterlinearWord | null>(null);
+  const [highlights, setHighlights] = useState<Map<number, string>>(new Map());
+  const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
+  const [glowVerse, setGlowVerse] = useState<number | null>(null);
 
   useEffect(() => {
     getBooks(translation).then(setBooks).catch(() => setBooks([]));
@@ -56,6 +65,56 @@ export default function Reader() {
       active = false;
     };
   }, [interlinear, book, chapterNum]);
+
+  useEffect(() => {
+    if (!profile) {
+      setHighlights(new Map());
+      return;
+    }
+    let active = true;
+    getChapterHighlights(profile.id, book, chapterNum)
+      .then((m) => active && setHighlights(m))
+      .catch(() => active && setHighlights(new Map()));
+    return () => {
+      active = false;
+    };
+  }, [profile, book, chapterNum]);
+
+  // Deep links like /read/JHN/3#v16 scroll to and briefly glow the verse.
+  useEffect(() => {
+    if (!data) return;
+    const m = location.hash.match(/^#v(\d+)$/);
+    if (!m) return;
+    const vnum = Number(m[1]);
+    const el = document.getElementById(`v${vnum}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setGlowVerse(vnum);
+    const t = setTimeout(() => setGlowVerse(null), 2600);
+    return () => clearTimeout(t);
+  }, [data, location.hash]);
+
+  async function applyColor(verse: number, color: HighlightColor | null) {
+    if (!profile) return;
+    const next = new Map(highlights);
+    if (color) {
+      next.set(verse, color);
+      setHighlights(next);
+      try {
+        await setHighlight(profile.id, book, chapterNum, verse, color);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      next.delete(verse);
+      setHighlights(next);
+      try {
+        await clearHighlight(profile.id, book, chapterNum, verse);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 
   const currentBook = useMemo(() => books.find((b) => b.id === book), [books, book]);
   const bookName = currentBook?.commonName || book;
@@ -134,14 +193,21 @@ export default function Reader() {
             if (item.type === "verse" && item.number != null) {
               const vnum = item.number;
               const words = interlinear && inter ? inter.verses[String(vnum)] : undefined;
+              const tint = highlights.get(vnum);
               return (
-                <p key={i} id={`v${vnum}`} className="group">
-                  <Link
-                    to={`/passage/${book}/${chapterNum}/${vnum}`}
+                <p
+                  key={i}
+                  id={`v${vnum}`}
+                  className={`group -mx-1 rounded px-1 transition-colors ${
+                    tint ? HIGHLIGHT_TINT[tint] || "" : ""
+                  } ${glowVerse === vnum ? "verse-glow" : ""}`}
+                >
+                  <button
+                    onClick={() => setSelectedVerse(vnum)}
                     className="mr-1 align-super font-sans text-[0.7rem] font-semibold text-stone-400 hover:text-ink"
                   >
                     {vnum}
-                  </Link>
+                  </button>
                   {words ? (
                     <span className="inline-flex flex-wrap gap-x-3 gap-y-2 align-top">
                       {words.map((w, wi) => (
@@ -188,6 +254,24 @@ export default function Reader() {
       </div>
 
       {popover && <WordPopover word={popover} onClose={() => setPopover(null)} />}
+
+      {selectedVerse != null && data && (
+        <VerseActionsSheet
+          book={book}
+          chapter={chapterNum}
+          verse={selectedVerse}
+          label={`${bookName} ${chapterNum}:${selectedVerse}`}
+          text={verseText(
+            data.content.find((c) => c.type === "verse" && c.number === selectedVerse)?.content
+          )}
+          currentColor={highlights.get(selectedVerse) || null}
+          onColor={(color) => {
+            void applyColor(selectedVerse, color);
+            setSelectedVerse(null);
+          }}
+          onClose={() => setSelectedVerse(null)}
+        />
+      )}
     </div>
   );
 }

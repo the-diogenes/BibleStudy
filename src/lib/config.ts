@@ -2,6 +2,8 @@ export interface AppConfig {
   supabaseUrl: string;
   supabaseAnonKey: string;
   groupName: string;
+  /** Where contact/feedback notifications are emailed (FormSubmit). */
+  notifyEmail: string;
 }
 
 declare global {
@@ -16,6 +18,7 @@ export const config: AppConfig = {
   supabaseUrl: runtime.supabaseUrl || import.meta.env.VITE_SUPABASE_URL || "",
   supabaseAnonKey: runtime.supabaseAnonKey || import.meta.env.VITE_SUPABASE_ANON_KEY || "",
   groupName: runtime.groupName || import.meta.env.VITE_GROUP_NAME || "Our Bible Study",
+  notifyEmail: runtime.notifyEmail || import.meta.env.VITE_NOTIFY_EMAIL || "john.raymond.jr@gmail.com",
 };
 
 /** True when Supabase credentials are present (accounts, threads, notes available). */

@@ -5,4 +5,8 @@ window.__BIBLE_CONFIG__ = {
   supabaseUrl: "https://dlutohlrkahycvmdhskp.supabase.co",
   supabaseAnonKey: "sb_publishable_6cNVR5MqndrjGgSdf5L8Og_emSbpPuu",
   groupName: "Bible Study",
+  // Contact/feedback messages email you here (via formsubmit.co).
+  // To hide your address from page source, replace with your FormSubmit alias
+  // token, e.g. "https://formsubmit.co/ajax/<your-token>" is used automatically.
+  notifyEmail: "john.raymond.jr@gmail.com",
 };

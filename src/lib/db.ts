@@ -1,11 +1,17 @@
 import { requireSupabase, supabase } from "./supabase";
 import type {
+  FeedbackMessage,
+  FeedbackThread,
+  Highlight,
   Lesson,
   LessonProgress,
+  Meeting,
+  MeetingRsvp,
   Note,
   NoteVisibility,
   Post,
   Profile,
+  RsvpStatus,
   Study,
   Thread,
 } from "../types";
@@ -314,5 +320,232 @@ export async function addInvite(email: string, role = "member"): Promise<void> {
 export async function removeInvite(email: string): Promise<void> {
   const sb = requireSupabase();
   const { error } = await sb.from("member_invites").delete().eq("email", email);
+  if (error) throw error;
+}
+
+// ───────────────────────── Members (admin roster) ─────────────────────────
+export async function listMembers(): Promise<Profile[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("profiles")
+    .select("*")
+    .order("display_name");
+  if (error) throw error;
+  return (data as Profile[]) || [];
+}
+
+export async function setMemberRole(id: string, role: "member" | "admin"): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("profiles").update({ role }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function adminSetPassword(target: string, newPassword: string): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.rpc("admin_set_password", { target, new_password: newPassword });
+  if (error) throw error;
+}
+
+// ───────────────────────── Meetings & RSVPs ─────────────────────────
+export async function nextMeeting(): Promise<Meeting | null> {
+  const sb = requireSupabase();
+  const nowIso = new Date().toISOString();
+  const { data } = await sb
+    .from("meetings")
+    .select("*")
+    .gte("starts_at", nowIso)
+    .order("starts_at", { ascending: true })
+    .limit(1);
+  const list = (data as Meeting[]) || [];
+  if (list.length) return list[0];
+  // No upcoming meeting scheduled: fall back to the most recently created.
+  const { data: recent } = await sb
+    .from("meetings")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  return ((recent as Meeting[]) || [])[0] || null;
+}
+
+export async function listMeetings(): Promise<Meeting[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("meetings")
+    .select("*")
+    .order("starts_at", { ascending: false, nullsFirst: false });
+  if (error) throw error;
+  return (data as Meeting[]) || [];
+}
+
+export async function createMeeting(input: Omit<Meeting, "id" | "created_at">): Promise<Meeting> {
+  const sb = requireSupabase();
+  const { data, error } = await sb.from("meetings").insert(input).select("*").single();
+  if (error) throw error;
+  return data as Meeting;
+}
+
+export async function deleteMeeting(id: string): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("meetings").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export interface RsvpSummary {
+  yes: number;
+  no: number;
+  maybe: number;
+  mine: RsvpStatus | null;
+}
+
+export async function getRsvps(meetingId: string, userId: string): Promise<RsvpSummary> {
+  const sb = requireSupabase();
+  const summary: RsvpSummary = { yes: 0, no: 0, maybe: 0, mine: null };
+  const { data } = await sb
+    .from("meeting_rsvps")
+    .select("user_id, status")
+    .eq("meeting_id", meetingId);
+  (data as Pick<MeetingRsvp, "user_id" | "status">[] | null)?.forEach((r) => {
+    summary[r.status] += 1;
+    if (r.user_id === userId) summary.mine = r.status;
+  });
+  return summary;
+}
+
+export async function setRsvp(
+  meetingId: string,
+  userId: string,
+  status: RsvpStatus
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("meeting_rsvps").upsert(
+    { meeting_id: meetingId, user_id: userId, status, updated_at: new Date().toISOString() },
+    { onConflict: "meeting_id,user_id" }
+  );
+  if (error) throw error;
+}
+
+// ───────────────────────── Highlights ─────────────────────────
+export async function getChapterHighlights(
+  userId: string,
+  book: string,
+  chapter: number
+): Promise<Map<number, string>> {
+  const map = new Map<number, string>();
+  if (!supabase) return map;
+  const { data } = await supabase
+    .from("highlights")
+    .select("verse, color")
+    .eq("user_id", userId)
+    .eq("book", book)
+    .eq("chapter", chapter);
+  (data as Pick<Highlight, "verse" | "color">[] | null)?.forEach((h) => map.set(h.verse, h.color));
+  return map;
+}
+
+export async function setHighlight(
+  userId: string,
+  book: string,
+  chapter: number,
+  verse: number,
+  color: string
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("highlights").upsert(
+    { user_id: userId, book, chapter, verse, color },
+    { onConflict: "user_id,book,chapter,verse" }
+  );
+  if (error) throw error;
+}
+
+export async function clearHighlight(
+  userId: string,
+  book: string,
+  chapter: number,
+  verse: number
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("highlights")
+    .delete()
+    .eq("user_id", userId)
+    .eq("book", book)
+    .eq("chapter", chapter)
+    .eq("verse", verse);
+  if (error) throw error;
+}
+
+// ───────────────────────── Feedback / contact inbox ─────────────────────────
+export async function myThreads(userId: string): Promise<FeedbackThread[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("feedback_threads")
+    .select("*")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data as FeedbackThread[]) || [];
+}
+
+export async function allThreads(): Promise<FeedbackThread[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("feedback_threads")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data as FeedbackThread[]) || [];
+}
+
+export async function createThread(
+  userId: string,
+  subject: string,
+  body: string
+): Promise<FeedbackThread> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("feedback_threads")
+    .insert({ user_id: userId, subject })
+    .select("*")
+    .single();
+  if (error) throw error;
+  const thread = data as FeedbackThread;
+  await addThreadMessage(thread.id, userId, "member", body);
+  return thread;
+}
+
+export async function threadMessages(threadId: string): Promise<FeedbackMessage[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("feedback_messages")
+    .select("*")
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as FeedbackMessage[]) || [];
+}
+
+export async function addThreadMessage(
+  threadId: string,
+  author: string,
+  senderRole: "member" | "admin",
+  body: string
+): Promise<FeedbackMessage> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("feedback_messages")
+    .insert({ thread_id: threadId, author, sender_role: senderRole, body })
+    .select("*")
+    .single();
+  if (error) throw error;
+  await sb
+    .from("feedback_threads")
+    .update({ updated_at: new Date().toISOString(), status: "open" })
+    .eq("id", threadId);
+  return data as FeedbackMessage;
+}
+
+export async function setThreadStatus(threadId: string, status: "open" | "closed"): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("feedback_threads").update({ status }).eq("id", threadId);
   if (error) throw error;
 }

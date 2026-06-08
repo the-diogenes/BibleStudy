@@ -1,0 +1,27 @@
+name: Supabase keep-alive
+
+# Free Supabase projects pause after ~7 days with zero activity. This pings the
+# REST API a couple of times a week so the project never idles, even if the
+# group is quiet for a stretch. The anon/publishable key is public by design.
+
+on:
+  schedule:
+    - cron: "0 12 */3 * *" # every 3 days at 12:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST
+        env:
+          SUPABASE_URL: https://dlutohlrkahycvmdhskp.supabase.co
+          SUPABASE_ANON_KEY: sb_publishable_6cNVR5MqndrjGgSdf5L8Og_emSbpPuu
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/meetings?select=id&limit=1")
+          echo "Supabase responded with HTTP ${code}"
+          # Any HTTP response (even 401/empty) counts as activity and keeps the project awake.
+          if [ "$code" = "000" ]; then echo "No response from Supabase"; exit 1; fi

@@ -8,6 +8,8 @@ import { refLabel } from "../lib/refs";
 import type { Lesson, Study } from "../types";
 import Spinner from "../components/Spinner";
 import ShareButton from "../components/ShareButton";
+import VerseOfDayCard from "../components/VerseOfDayCard";
+import MeetingCard from "../components/MeetingCard";
 import { ChevronRight } from "../components/icons";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -88,6 +90,13 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      {status === "member" && (
+        <>
+          <VerseOfDayCard />
+          <MeetingCard />
+        </>
+      )}
 
       {status !== "member" ? (
         <p className="text-sm text-stone-500">

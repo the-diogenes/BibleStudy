@@ -1,29 +1,396 @@
 import { useEffect, useState } from "react";
 import { getBooks, type BookSummary } from "../lib/bibleApi";
 import { useSettings } from "../context/SettingsContext";
+import { useAuth } from "../context/AuthContext";
 import {
   addInvite,
+  addThreadMessage,
+  adminSetPassword,
+  allThreads,
   createLesson,
+  createMeeting,
   createStudy,
   deleteLesson,
+  deleteMeeting,
   deleteStudy,
   listInvites,
   listLessons,
+  listMembers,
+  listMeetings,
   listStudies,
   removeInvite,
+  setMemberRole,
+  setThreadStatus,
+  threadMessages,
   updateLesson,
 } from "../lib/db";
-import type { Lesson, LessonStatus, Study } from "../types";
+import type { FeedbackMessage, FeedbackThread, Lesson, LessonStatus, Meeting, Profile, Study } from "../types";
 import { emailToUsername, usernameToEmail } from "../lib/username";
+import { timeAgo } from "../lib/time";
 import Spinner from "../components/Spinner";
 
 export default function Admin() {
   return (
     <div className="space-y-8">
       <h1 className="font-serif text-2xl font-semibold">Admin</h1>
+      <Members />
+      <MeetingsAdmin />
+      <FeedbackInbox />
       <Invites />
       <Curriculum />
     </div>
+  );
+}
+
+function Members() {
+  const [members, setMembers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pwFor, setPwFor] = useState<string | null>(null);
+  const [pwValue, setPwValue] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setMembers(await listMembers().catch(() => []));
+    setLoading(false);
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function changeRole(m: Profile) {
+    await setMemberRole(m.id, m.role === "admin" ? "member" : "admin");
+    await load();
+  }
+
+  async function savePassword(id: string) {
+    if (pwValue.length < 6) return;
+    setMsg(null);
+    try {
+      await adminSetPassword(id, pwValue);
+      setMsg("Password updated. Share it with the member.");
+      setPwFor(null);
+      setPwValue("");
+      setTimeout(() => setMsg(null), 4000);
+    } catch (e) {
+      setMsg((e as Error).message || "Could not update password.");
+    }
+  }
+
+  return (
+    <section className="card p-4">
+      <h2 className="font-serif text-lg font-semibold">Member roster</h2>
+      <p className="mb-3 text-xs text-stone-500">
+        Promote/demote admins, or set a temporary password for someone who's locked out.
+      </p>
+      {msg && <p className="mb-2 text-sm text-emerald-700">{msg}</p>}
+      {loading ? (
+        <Spinner />
+      ) : (
+        <ul className="divide-y divide-stone-100 text-sm">
+          {members.map((m) => (
+            <li key={m.id} className="py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{m.display_name || m.username}</span>
+                  <span className="block text-xs text-stone-400">
+                    @{m.username || "?"} · {m.role}
+                  </span>
+                </span>
+                <div className="flex shrink-0 gap-2">
+                  <button className="chip bg-stone-100 text-stone-600" onClick={() => void changeRole(m)}>
+                    {m.role === "admin" ? "Make member" : "Make admin"}
+                  </button>
+                  <button
+                    className="chip bg-stone-100 text-stone-600"
+                    onClick={() => {
+                      setPwFor(pwFor === m.id ? null : m.id);
+                      setPwValue("");
+                    }}
+                  >
+                    Password
+                  </button>
+                </div>
+              </div>
+              {pwFor === m.id && (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="New temporary password (min 6)"
+                    value={pwValue}
+                    onChange={(e) => setPwValue(e.target.value)}
+                  />
+                  <button
+                    className="btn-primary"
+                    disabled={pwValue.length < 6}
+                    onClick={() => void savePassword(m.id)}
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+          {members.length === 0 && <li className="py-2 text-stone-400">No members yet.</li>}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function MeetingsAdmin() {
+  const { translation } = useSettings();
+  const [books, setBooks] = useState<BookSummary[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({
+    title: "",
+    startsAt: "",
+    location: "",
+    book: "",
+    chapter: "",
+    notes: "",
+  });
+
+  useEffect(() => {
+    getBooks(translation).then(setBooks).catch(() => setBooks([]));
+  }, [translation]);
+
+  async function load() {
+    setLoading(true);
+    setMeetings(await listMeetings().catch(() => []));
+    setLoading(false);
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.title.trim()) return;
+    await createMeeting({
+      title: form.title.trim(),
+      starts_at: form.startsAt ? new Date(form.startsAt).toISOString() : null,
+      location: form.location.trim() || null,
+      book: form.book || null,
+      chapter: form.chapter ? Number(form.chapter) : null,
+      verse_start: null,
+      verse_end: null,
+      notes: form.notes.trim() || null,
+    });
+    setForm({ title: "", startsAt: "", location: "", book: "", chapter: "", notes: "" });
+    await load();
+  }
+
+  return (
+    <section className="card p-4">
+      <h2 className="font-serif text-lg font-semibold">Meetings</h2>
+      <p className="mb-3 text-xs text-stone-500">
+        The next upcoming meeting shows on Home with RSVP buttons.
+      </p>
+      <form onSubmit={add} className="mb-4 space-y-2 rounded-lg bg-stone-50 p-3">
+        <input
+          className="input"
+          placeholder="Title (e.g. Thursday men's study)"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+        />
+        <div className="flex flex-wrap gap-2">
+          <input
+            className="input flex-1"
+            type="datetime-local"
+            value={form.startsAt}
+            onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
+          />
+          <input
+            className="input flex-1"
+            placeholder="Location"
+            value={form.location}
+            onChange={(e) => setForm({ ...form, location: e.target.value })}
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <select
+            className="input flex-1"
+            value={form.book}
+            onChange={(e) => setForm({ ...form, book: e.target.value })}
+          >
+            <option value="">Passage (optional)</option>
+            {books.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.commonName}
+              </option>
+            ))}
+          </select>
+          <input
+            className="input w-24"
+            type="number"
+            min={1}
+            placeholder="Ch"
+            value={form.chapter}
+            onChange={(e) => setForm({ ...form, chapter: e.target.value })}
+          />
+        </div>
+        <input
+          className="input"
+          placeholder="Notes (optional)"
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+        />
+        <button className="btn-primary">Add meeting</button>
+      </form>
+
+      {loading ? (
+        <Spinner />
+      ) : (
+        <ul className="space-y-2">
+          {meetings.map((m) => (
+            <li
+              key={m.id}
+              className="flex items-center justify-between gap-2 rounded-lg border border-stone-200 p-2 text-sm"
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{m.title}</span>
+                <span className="block text-xs text-stone-400">
+                  {m.starts_at ? new Date(m.starts_at).toLocaleString() : "Time TBD"}
+                  {m.location ? ` · ${m.location}` : ""}
+                </span>
+              </span>
+              <button
+                className="text-xs text-stone-400 hover:text-red-600"
+                onClick={async () => {
+                  await deleteMeeting(m.id);
+                  await load();
+                }}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+          {meetings.length === 0 && <li className="text-sm text-stone-400">No meetings yet.</li>}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function FeedbackInbox() {
+  const { profile } = useAuth();
+  const [threads, setThreads] = useState<FeedbackThread[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<FeedbackMessage[]>([]);
+  const [reply, setReply] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    setThreads(await allThreads().catch(() => []));
+    setLoading(false);
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function openThread(t: FeedbackThread) {
+    if (openId === t.id) {
+      setOpenId(null);
+      return;
+    }
+    setOpenId(t.id);
+    setMessages(await threadMessages(t.id).catch(() => []));
+  }
+
+  async function send(threadId: string) {
+    if (!profile || !reply.trim()) return;
+    setBusy(true);
+    try {
+      await addThreadMessage(threadId, profile.id, "admin", reply.trim());
+      setReply("");
+      setMessages(await threadMessages(threadId));
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card p-4">
+      <h2 className="font-serif text-lg font-semibold">Feedback inbox</h2>
+      <p className="mb-3 text-xs text-stone-500">Messages members send you. Reply here.</p>
+      {loading ? (
+        <Spinner />
+      ) : threads.length === 0 ? (
+        <p className="text-sm text-stone-400">No messages yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {threads.map((t) => (
+            <li key={t.id} className="rounded-lg border border-stone-200">
+              <button
+                onClick={() => void openThread(t)}
+                className="flex w-full items-center justify-between gap-2 p-3 text-left text-sm"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{t.subject}</span>
+                  <span className="block text-xs text-stone-400">{timeAgo(t.updated_at)}</span>
+                </span>
+                <span
+                  className={`chip ${
+                    t.status === "open"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-stone-200 text-stone-500"
+                  }`}
+                >
+                  {t.status}
+                </span>
+              </button>
+              {openId === t.id && (
+                <div className="border-t border-stone-100 p-3">
+                  <div className="space-y-2">
+                    {messages.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`flex ${m.sender_role === "admin" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                            m.sender_role === "admin" ? "bg-ink text-parchment" : "bg-stone-100"
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap">{m.body}</p>
+                          <p className="mt-1 text-[0.65rem] text-stone-400">{timeAgo(m.created_at)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      className="input"
+                      placeholder="Reply…"
+                      value={reply}
+                      onChange={(e) => setReply(e.target.value)}
+                    />
+                    <button className="btn-primary" disabled={busy || !reply.trim()} onClick={() => void send(t.id)}>
+                      Send
+                    </button>
+                  </div>
+                  <button
+                    className="mt-2 text-xs text-stone-400 hover:text-ink"
+                    onClick={async () => {
+                      await setThreadStatus(t.id, t.status === "open" ? "closed" : "open");
+                      await load();
+                    }}
+                  >
+                    Mark {t.status === "open" ? "closed" : "open"}
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

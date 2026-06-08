@@ -41,8 +41,7 @@ export default function About() {
       <section>
         <h2 className="font-serif text-lg font-semibold">Statement of faith</h2>
         <p className="text-sm leading-7 text-stone-700">
-          (Write your group's statement of faith here. Edit
-          <span className="font-mono"> src/pages/About.tsx</span>.)
+          Together may we walk closer with the Father, and grow in Christ, becoming the best version of ourselves, for the glory of God.
         </p>
       </section>
 
